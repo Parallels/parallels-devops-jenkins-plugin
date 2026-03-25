@@ -13,13 +13,15 @@ See the `docs/` folder for architectural analysis.
 ### Initial Setup & Build Instructions
 Before you begin, ensure you have correctly configured your machine dependencies by following our officially documented [Initial Setup Guide](docs/setup-guide.md).
 
-**To explicitly compile and verify the codebase:**
+**We have explicitly written a `Makefile` to automatically streamline compilation processes for you.**
+
+**To securely compile and verify the codebase:**
 ```bash
-mvn clean verify
+make build
 ```
 
-**To run a local Jenkins instance for UI testing:**
+**To boot the local Jenkins development server:**
 ```bash
-mvn hpi:run
+make run
 ```
-*(Jenkins will automatically start up and be accessible locally at `http://localhost:8080/jenkins`)*
+*(Jenkins will automatically spin up and listen at `http://localhost:8080/jenkins`)*

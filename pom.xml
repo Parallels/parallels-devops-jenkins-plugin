@@ -24,17 +24,6 @@
         <java.level>11</java.level>
     </properties>
 
-    <licenses>
-        <license>
-            <name>MIT License</name>
-            <url>https://opensource.org/licenses/MIT</url>
-        </license>
-    </licenses>
-
-    <dependencies>
-        <!-- Jenkins API dependencies will be added here -->
-    </dependencies>
-    
     <repositories>
         <repository>
             <id>repo.jenkins-ci.org</id>
