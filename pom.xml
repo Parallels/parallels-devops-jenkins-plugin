@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.jenkins-ci.plugins</groupId>
+        <artifactId>plugin</artifactId>
+        <version>4.88</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>io.jenkins.plugins</groupId>
+    <artifactId>parallels-desktop</artifactId>
+    <version>0.1</version>
+    <packaging>hpi</packaging>
+
+    <name>Parallels Desktop Plugin</name>
+    <description>Integrates Jenkins with Parallels Desktop to dynamically provision macOS, Windows, and Linux virtual machines as build agents.</description>
+    <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
+
+    <properties>
+        <jenkins.version>2.426.3</jenkins.version>
+        <java.level>11</java.level>
+    </properties>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
+    <dependencies>
+        <!-- Jenkins API dependencies will be added here -->
+    </dependencies>
+    
+    <repositories>
+        <repository>
+            <id>repo.jenkins-ci.org</id>
+            <url>https://repo.jenkins-ci.org/public/</url>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>repo.jenkins-ci.org</id>
+            <url>https://repo.jenkins-ci.org/public/</url>
+        </pluginRepository>
+    </pluginRepositories>
+</project>
