@@ -105,23 +105,25 @@ To implement this plugin successfully, it should be broken down into the followi
    - Use the Jenkins Maven Archetype to configure the empty Java project shell.
 2. **Task 2: Local Build & Run Automation**
     - Document clearly and automate the project steps for developers to compile, test, and run the plugin reliably in their local environment (`mvn hpi:run`).
-3. **Task 3: CI/CD Pipeline Automation (GitHub Actions)**
-    - Create robust CI/CD workflows using GitHub Actions to automatically compile, test, and scan the plugin repository on every Pull Request.
-4. **Task 4: API Client Implementation**
-   - Create a pure Java client for the `prl-devops-service` to hit the clone, status check, and delete endpoints.
-5. **Task 5: Implement `Cloud` Configuration**
-   - Create the `PrlDevopsCloud` class extending `Cloud` to store credentials and the DevOps Service URL. Build the `.jelly` UI for the Jenkins System Configuration page.
-6. **Task 6: Implement `CloudSlave` and `AgentTemplate`**
-   - Define the VM configurations available to clone (e.g., Mac Builder). Define `PrlDevopsSlave` extending `AbstractCloudSlave` to represent the node in Jenkins.
-7. **Task 7: Implement Node Provisioning Logic**
-   - Implement the `provision()` method in the Cloud class. When Jenkins requests capacity, call the API to clone the VM, and return a `PlannedNode`.
-8. **Task 8: Implement `ComputerLauncher` & Connection**
-   - Wire up `SSHLauncher` to automatically SSH into the newly cloned VM IP and start the Jenkins agent programmatically.
-9. **Task 9: Retention Strategy (Cleanup)**
-   - Implement `CloudRetentionStrategy` to call the DevOps API tool to delete the VM when Jenkins marks it as idle or offline.
-10. **Task 10: Testing & Packaging**
-   - Use `JenkinsRule` to simulate node provisioning and ensure the cloud provider boots correctly. Package into `.hpi` and document.
-11. **Task 11: User Documentation**
-   - Write a detailed Markdown guide (similar to the `github-actions.md` example) explaining how Jenkins administrators install the `.hpi` file, select between Host/Orchestrator modes, and define their VM templates.
-12. **Task 12: Publishing to Jenkins Plugin Store**
+3. **Task 3: Running on a Local Jenkins Server**
+    - Ensure the plugin can be installed and run on a local Jenkins instance. Document the process of installing the `.hpi` file and configuring the Cloud provider in Jenkins.
+4. **Task 4: Publishing to Jenkins Plugin Store**
     - Execute the open-source governance process to host the plugin on the `@jenkinsci` GitHub and publish the final `.hpi` release to the official Jenkins Update Center.
+5. **Task 5: CI/CD Pipeline Automation (GitHub Actions)**
+    - Create robust CI/CD workflows using GitHub Actions to automatically compile, test, and scan the plugin repository on every Pull Request.
+6. **Task 6: API Client Implementation**
+   - Create a pure Java client for the `prl-devops-service` to hit the clone, status check, and delete endpoints.
+7. **Task 7: Implement `Cloud` Configuration**
+   - Create the `PrlDevopsCloud` class extending `Cloud` to store credentials and the DevOps Service URL. Build the `.jelly` UI for the Jenkins System Configuration page.
+8. **Task 8: Implement `CloudSlave` and `AgentTemplate`**
+   - Define the VM configurations available to clone (e.g., Mac Builder). Define `PrlDevopsSlave` extending `AbstractCloudSlave` to represent the node in Jenkins.
+9. **Task 9: Implement Node Provisioning Logic**
+   - Implement the `provision()` method in the Cloud class. When Jenkins requests capacity, call the API to clone the VM, and return a `PlannedNode`.
+10. **Task 10: Implement `ComputerLauncher` & Connection**
+   - Wire up `SSHLauncher` to automatically SSH into the newly cloned VM IP and start the Jenkins agent programmatically.
+11. **Task 11: Retention Strategy (Cleanup)**
+   - Implement `CloudRetentionStrategy` to call the DevOps API tool to delete the VM when Jenkins marks it as idle or offline.
+12. **Task 12: Testing & Packaging**
+   - Use `JenkinsRule` to simulate node provisioning and ensure the cloud provider boots correctly. Package into `.hpi` and document.
+13. **Task 13: User Documentation**
+   - Write a detailed Markdown guide (similar to the `github-actions.md` example) explaining how Jenkins administrators install the `.hpi` file, select between Host/Orchestrator modes, and define their VM templates.
