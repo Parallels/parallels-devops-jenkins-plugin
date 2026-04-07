@@ -30,6 +30,9 @@
         <jenkins.version>2.479.1</jenkins.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <!-- SpotBugs: increase analysis depth (parent POM already runs spotbugs during verify) -->
+        <spotbugs.effort>Max</spotbugs.effort>
+        <spotbugs.threshold>Low</spotbugs.threshold>
     </properties>
 
     <repositories>
