@@ -6,22 +6,30 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>4.88</version>
+        <version>5.2102.v5f5fe09fccf1</version>
         <relativePath/>
     </parent>
 
     <groupId>io.jenkins.plugins</groupId>
-    <artifactId>parallels-desktop</artifactId>
+    <artifactId>parallels-devops-jenkins-plugin</artifactId>
     <version>0.1</version>
     <packaging>hpi</packaging>
 
-    <name>Parallels Desktop Plugin</name>
-    <description>Integrates Jenkins with Parallels Desktop to dynamically provision macOS, Windows, and Linux virtual machines as build agents.</description>
+    <name>Parallels Devops Jenkins Plugin</name>
+    <description>Integrates Jenkins with Parallels Devops Service to dynamically provision macOS, Windows, and Linux virtual machines as build agents.</description>
     <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
 
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
     <properties>
-        <jenkins.version>2.426.3</jenkins.version>
-        <java.level>11</java.level>
+        <jenkins.version>2.479.1</jenkins.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
     <repositories>

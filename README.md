@@ -1,10 +1,10 @@
-# Parallels Desktop Plugin for Jenkins
+# Parallels Devops Jenkins Plugin
 
-This plugin integrates Jenkins with Parallels Desktop (via the Parallels DevOps Service engine), allowing Jenkins to dynamically provision, manage, and destroy macOS, Windows, or Linux virtual machines as temporary build agents on demand.
+This plugin integrates Jenkins with Parallels Devops Service (via the Parallels DevOps Service engine), allowing Jenkins to dynamically provision, manage, and destroy macOS, Windows, or Linux virtual machines as temporary build agents on demand.
 
 ## Features
 - **Dynamic Node Provisioning:** Automatically requests cloned VMs from the prl-devops-service when the Jenkins queue is full.
-- **Orchestrator Mode Support:** Integrates with the Parallels Catalog service to cache golden images and balance resources across a farm of Parallels Desktop VM hosts.
+- **Orchestrator Mode Support:** Integrates with the Parallels Catalog service to cache golden images and balance resources across a farm of Parallels Devops VM hosts.
 - **Auto Cleanup:** Automatically destroys the VMs using Jenkins Retention Strategies when the job finishes.
 
 ## Developer Documentation
