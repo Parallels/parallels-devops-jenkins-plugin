@@ -11,11 +11,11 @@
     </parent>
 
     <groupId>io.jenkins.plugins</groupId>
-    <artifactId>parallels-devops-jenkins-plugin</artifactId>
-    <version>0.1</version>
+    <artifactId>parallels-devops</artifactId>
+    <version>${changelist}</version>
     <packaging>hpi</packaging>
 
-    <name>Parallels Devops Jenkins Plugin</name>
+    <name>Parallels DevOps</name>
     <description>Integrates Jenkins with Parallels Devops Service to dynamically provision macOS, Windows, and Linux virtual machines as build agents.</description>
     <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
 
@@ -26,7 +26,15 @@
         </license>
     </licenses>
 
+    <scm>
+        <connection>scm:git:https://github.com/Parallels/parallels-devops-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:Parallels/parallels-devops-plugin.git</developerConnection>
+        <url>https://github.com/Parallels/parallels-devops-plugin</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <properties>
+        <changelist>999999-SNAPSHOT</changelist>
         <jenkins.version>2.479.1</jenkins.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
@@ -47,4 +55,5 @@
             <url>https://repo.jenkins-ci.org/public/</url>
         </pluginRepository>
     </pluginRepositories>
+
 </project>
