@@ -21,6 +21,7 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.verb.POST;
 
 import java.net.URI;
+import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -172,8 +173,11 @@ public class PrlDevopsCloud extends Cloud {
                             } else {
                                 return FormValidation.error("Auth token POST failed. HTTP " + authRes.statusCode() + " " + authRes.body());
                             }
-                        } catch (Exception e) {
-                            return FormValidation.error("Authentication token exchange error: " + e.getMessage());
+                        } catch (IOException | IllegalArgumentException e) {
+                            return FormValidation.error("Authentication error: " + e.getMessage());
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return FormValidation.error("Authentication interrupted");
                         }
                     }
                 }
@@ -207,8 +211,11 @@ public class PrlDevopsCloud extends Cloud {
                 } else {
                     return FormValidation.error("Failed to connect. HTTP Status: " + response.statusCode());
                 }
-            } catch (Exception e) {
+            } catch (IOException | IllegalArgumentException e) {
                 return FormValidation.error("Connection error: " + e.getMessage());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return FormValidation.error("Connection interrupted");
             }
         }
     }
