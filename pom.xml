@@ -35,13 +35,26 @@
 
     <properties>
         <changelist>999999-SNAPSHOT</changelist>
-        <jenkins.version>2.479.1</jenkins.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <jenkins.baseline>2.528</jenkins.baseline>
+        <jenkins.version>${jenkins.baseline}.3</jenkins.version>
+        <hpi.strictBundledArtifacts>true</hpi.strictBundledArtifacts>
+        <ban-commons-lang-2.skip>false</ban-commons-lang-2.skip>
         <!-- SpotBugs: increase analysis depth (parent POM already runs spotbugs during verify) -->
         <spotbugs.effort>Max</spotbugs.effort>
         <spotbugs.threshold>Low</spotbugs.threshold>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.jenkins.tools.bom</groupId>
+                <artifactId>bom-${jenkins.baseline}.x</artifactId>
+                <version>6237.v4da_61a_4a_19e5</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <repositories>
         <repository>
