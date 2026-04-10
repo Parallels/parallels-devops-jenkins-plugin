@@ -1,0 +1,20 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:c="/lib/credentials">
+    <f:entry title="Name" field="name">
+        <f:textbox />
+    </f:entry>
+    <f:entry title="Service URL" field="serviceUrl">
+        <f:textbox />
+    </f:entry>
+    <f:entry title="API Credentials" field="credentialsId">
+        <c:select />
+    </f:entry>
+    <f:entry title="Connection Mode" field="connectionMode">
+        <f:select />
+    </f:entry>
+    <f:entry title="Max Concurrent Agents" field="maxAgents">
+        <f:number default="1" min="1" max="50" />
+    </f:entry>
+    <f:validateButton title="Test Connection" method="testConnection"
+                      with="serviceUrl,credentialsId" />
+</j:jelly>

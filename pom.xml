@@ -6,16 +6,16 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>5.2102.v5f5fe09fccf1</version>
+        <version>6.2138.v03274d462c13</version>
         <relativePath/>
     </parent>
 
     <groupId>io.jenkins.plugins</groupId>
-    <artifactId>parallels-devops-jenkins-plugin</artifactId>
-    <version>0.1</version>
+    <artifactId>parallels-devops</artifactId>
+    <version>${changelist}</version>
     <packaging>hpi</packaging>
 
-    <name>Parallels Devops Jenkins Plugin</name>
+    <name>Parallels DevOps</name>
     <description>Integrates Jenkins with Parallels Devops Service to dynamically provision macOS, Windows, and Linux virtual machines as build agents.</description>
     <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
 
@@ -26,13 +26,45 @@
         </license>
     </licenses>
 
+    <scm>
+        <connection>scm:git:https://github.com/Parallels/parallels-devops-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:Parallels/parallels-devops-plugin.git</developerConnection>
+        <url>https://github.com/Parallels/parallels-devops-plugin</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <properties>
-        <jenkins.version>2.479.1</jenkins.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <changelist>999999-SNAPSHOT</changelist>
+        <jenkins.baseline>2.528</jenkins.baseline>
+        <jenkins.version>${jenkins.baseline}.3</jenkins.version>
+        <hpi.strictBundledArtifacts>true</hpi.strictBundledArtifacts>
+        <ban-commons-lang-2.skip>false</ban-commons-lang-2.skip>
+        <!-- SpotBugs: increase analysis depth (parent POM already runs spotbugs during verify) -->
+        <spotbugs.effort>Max</spotbugs.effort>
+        <spotbugs.threshold>Low</spotbugs.threshold>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.jenkins.tools.bom</groupId>
+                <artifactId>bom-${jenkins.baseline}.x</artifactId>
+                <version>6237.v4da_61a_4a_19e5</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>credentials</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>plain-credentials</artifactId>
+        </dependency>
         <!-- Jackson is shipped by Jenkins core; declare as provided to avoid classloader conflicts -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -60,10 +92,12 @@
             <url>https://repo.jenkins-ci.org/public/</url>
         </repository>
     </repositories>
+
     <pluginRepositories>
         <pluginRepository>
             <id>repo.jenkins-ci.org</id>
             <url>https://repo.jenkins-ci.org/public/</url>
         </pluginRepository>
     </pluginRepositories>
+
 </project>
