@@ -7,6 +7,7 @@ import com.parallels.jenkins.api.dto.CloneResponse;
 import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import com.parallels.jenkins.api.exception.PrlApiTimeoutException;
+import hudson.util.Secret;
 
 import java.io.IOException;
 import java.net.URI;
@@ -45,7 +46,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
     private static final String CONTENT_TYPE_JSON = "application/json";
 
     private final String baseUrl;
-    private final String bearerToken;
+    private final Secret bearerToken;
     private final ConnectionMode mode;
     private final String hostId;
     private final HttpClient httpClient;
@@ -53,7 +54,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
 
     private PrlDevopsHttpClient(Builder builder) {
         this.baseUrl = stripTrailingSlash(builder.baseUrl);
-        this.bearerToken = builder.bearerToken;
+        this.bearerToken = Secret.fromString(Secret.toString(builder.bearerToken));
         this.mode = builder.mode;
         this.hostId = builder.hostId;
         this.httpClient = builder.httpClient != null
@@ -75,7 +76,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
                 HttpRequest.newBuilder()
                         .uri(toUri(path))
                         .header("Content-Type", CONTENT_TYPE_JSON)
-                        .header("Authorization", "Bearer " + bearerToken)
+                        .header("Authorization", "Bearer " + bearerToken.getPlainText())
                         .PUT(HttpRequest.BodyPublishers.ofString(body))
                         .build());
         requireSuccessful(response);
@@ -88,7 +89,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
         HttpResponse<String> response = send(
                 HttpRequest.newBuilder()
                         .uri(toUri(path))
-                        .header("Authorization", "Bearer " + bearerToken)
+                        .header("Authorization", "Bearer " + bearerToken.getPlainText())
                         .GET()
                         .build());
         requireSuccessful(response);
@@ -101,7 +102,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
         HttpResponse<String> response = send(
                 HttpRequest.newBuilder()
                         .uri(toUri(path))
-                        .header("Authorization", "Bearer " + bearerToken)
+                        .header("Authorization", "Bearer " + bearerToken.getPlainText())
                         .DELETE()
                         .build());
         requireSuccessful(response);
@@ -230,7 +231,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
     public static final class Builder {
 
         private String baseUrl;
-        private String bearerToken;
+        private Secret bearerToken;
         private ConnectionMode mode = ConnectionMode.HOST;
         private String hostId;
         /** Allows injection of a custom HttpClient (primarily for testing). */
@@ -242,7 +243,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
         }
 
         public Builder bearerToken(String bearerToken) {
-            this.bearerToken = bearerToken;
+            this.bearerToken = Secret.fromString(bearerToken);
             return this;
         }
 
@@ -269,7 +270,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
             if (baseUrl == null || baseUrl.isBlank()) {
                 throw new IllegalStateException("baseUrl must be set");
             }
-            if (bearerToken == null || bearerToken.isBlank()) {
+            if (bearerToken == null || bearerToken.getPlainText().isBlank()) {
                 throw new IllegalStateException("bearerToken must be set");
             }
             if (mode == ConnectionMode.ORCHESTRATOR && (hostId == null || hostId.isBlank())) {
