@@ -28,6 +28,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PrlDevopsCloud extends Cloud {
 
@@ -35,6 +37,7 @@ public class PrlDevopsCloud extends Cloud {
     private String credentialsId;
     private ConnectionMode connectionMode;
     private int maxAgents;
+    private List<AgentTemplate> templates = new ArrayList<>();
 
     @DataBoundConstructor
     public PrlDevopsCloud(String name) {
@@ -45,6 +48,7 @@ public class PrlDevopsCloud extends Cloud {
     public String getCredentialsId() { return credentialsId; }
     public ConnectionMode getConnectionMode() { return connectionMode; }
     public int getMaxAgents() { return maxAgents; }
+    public List<AgentTemplate> getTemplates() { return Collections.unmodifiableList(templates); }
 
     @DataBoundSetter
     public void setServiceUrl(String serviceUrl) { this.serviceUrl = serviceUrl; }
@@ -54,6 +58,23 @@ public class PrlDevopsCloud extends Cloud {
     public void setConnectionMode(ConnectionMode connectionMode) { this.connectionMode = connectionMode; }
     @DataBoundSetter
     public void setMaxAgents(int maxAgents) { this.maxAgents = maxAgents; }
+    @DataBoundSetter
+    public void setTemplates(List<AgentTemplate> templates) {
+        this.templates = templates != null ? new ArrayList<>(templates) : new ArrayList<>();
+    }
+
+    /**
+     * Returns the first {@link AgentTemplate} whose label set satisfies the
+     * given Jenkins {@link hudson.model.Label}, or {@code null} if none match.
+     */
+    public AgentTemplate getTemplateForLabel(hudson.model.Label label) {
+        for (AgentTemplate t : templates) {
+            if (t.matches(label)) {
+                return t;
+            }
+        }
+        return null;
+    }
 
     @Override
     public Collection<NodeProvisioner.PlannedNode> provision(CloudState state, int excessWorkload) {
