@@ -11,6 +11,7 @@ import hudson.util.Secret;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Locale;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -116,7 +117,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
 
         while (true) {
             VmStatusResponse status = getVmStatus(vmId);
-            String state = status.getStatus() != null ? status.getStatus().toLowerCase() : "";
+            String state = status.getStatus() != null ? status.getStatus().toLowerCase(Locale.ROOT) : "";
 
             switch (state) {
                 case "running":

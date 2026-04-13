@@ -2,6 +2,7 @@ package com.parallels.jenkins.api.exception;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.parallels.jenkins.api.dto.ApiErrorResponse;
+import java.io.IOException;
 
 /**
  * Thrown when prl-devops-service returns a non-2xx HTTP response, or when a
@@ -10,7 +11,7 @@ import com.parallels.jenkins.api.dto.ApiErrorResponse;
 public class PrlApiException extends Exception {
 
     private final int httpStatus;
-    private final ApiErrorResponse detail;
+    private final transient ApiErrorResponse detail;
 
     public PrlApiException(String message) {
         super(message);
@@ -45,7 +46,7 @@ public class PrlApiException extends Exception {
         if (rawBody != null && !rawBody.isBlank()) {
             try {
                 detail = mapper.readValue(rawBody, ApiErrorResponse.class);
-            } catch (Exception ignored) {
+            } catch (IOException ignored) {
                 // body not in expected format — use raw text as message
             }
         }
