@@ -1,4 +1,4 @@
-.PHONY: all build test run clean package
+.PHONY: all build test verify run clean package
 
 # Force Maven to use JDK 21 (fixes 'Unsupported class file major version 69 / Java 25' bugs)
 export JAVA_HOME := $(shell /usr/libexec/java_home -v 21 2>/dev/null || echo "/opt/homebrew/opt/openjdk@21")
@@ -30,6 +30,10 @@ run:
 # Package the final .hpi file under target/
 package:
 	mvn clean package -DskipTests
+
+# Run the full CI check locally: tests + SpotBugs (mirrors what buildPlugin() does in CI)
+verify:
+	mvn verify
 
 # Wipe all compiled Java artifacts and purge the Jenkins cache
 clean:
