@@ -14,6 +14,7 @@ import jenkins.model.Jenkins;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.verb.POST;
 
 import java.util.Collections;
 
@@ -69,6 +70,7 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> {
             return "VM Template";
         }
 
+        @POST
         public ListBoxModel doFillSshCredentialsIdItems(@QueryParameter String sshCredentialsId) {
             Jenkins jenkins = Jenkins.get();
             if (!jenkins.hasPermission(Jenkins.ADMINISTER)) {
