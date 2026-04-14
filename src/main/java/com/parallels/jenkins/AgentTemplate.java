@@ -16,6 +16,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.verb.POST;
 
+import java.io.Serializable;
 import java.util.Collections;
 
 /**
@@ -23,7 +24,9 @@ import java.util.Collections;
  * working directory. One {@code AgentTemplate} maps to one VM type in
  * Parallels DevOps Service.
  */
-public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> {
+public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private final String templateLabel;
     private final String baseVmName;
