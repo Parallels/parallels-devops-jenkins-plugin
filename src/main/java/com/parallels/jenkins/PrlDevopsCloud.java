@@ -4,9 +4,17 @@ import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import com.parallels.jenkins.api.PrlDevopsApiClient;
+import com.parallels.jenkins.api.PrlDevopsHttpClient;
+import com.parallels.jenkins.api.dto.CloneRequest;
+import com.parallels.jenkins.api.dto.CloneResponse;
+import com.parallels.jenkins.api.exception.PrlApiException;
 import hudson.Extension;
+import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Item;
+import hudson.model.Label;
+import hudson.model.Node;
 import hudson.security.ACL;
 import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
@@ -26,12 +34,16 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class PrlDevopsCloud extends Cloud {
+
+    private static final Logger LOGGER = Logger.getLogger(PrlDevopsCloud.class.getName());
 
     private String serviceUrl;
     private String credentialsId;
@@ -76,14 +88,126 @@ public class PrlDevopsCloud extends Cloud {
         return null;
     }
 
-    @Override
-    public Collection<NodeProvisioner.PlannedNode> provision(CloudState state, int excessWorkload) {
-        return Collections.emptyList();
-    }
+    // -------------------------------------------------------------------------
+    // Cloud provisioning
+    // -------------------------------------------------------------------------
 
     @Override
     public boolean canProvision(CloudState state) {
-        return false;
+        AgentTemplate template = getTemplateForLabel(state.getLabel());
+        return template != null
+                && Util.fixEmptyAndTrim(serviceUrl) != null
+                && Util.fixEmptyAndTrim(credentialsId) != null;
+    }
+
+    @Override
+    public Collection<NodeProvisioner.PlannedNode> provision(CloudState state, int excessWorkload) {
+        Label label = state.getLabel();
+        AgentTemplate template = getTemplateForLabel(label);
+        if (template == null) {
+            LOGGER.warning("[PrlDevops] No matching template for label: " + label);
+            return Collections.emptyList();
+        }
+
+        // Count currently registered agents that belong to this cloud.
+        long activeAgents = Jenkins.get().getNodes().stream()
+                .filter(n -> n instanceof PrlDevopsSlave
+                        && name.equals(((PrlDevopsSlave) n).getCloudName()))
+                .count();
+
+        int budget = maxAgents > 0 ? (int) Math.max(0, maxAgents - activeAgents) : excessWorkload;
+        int toProvision = Math.min(excessWorkload, budget);
+
+        if (toProvision <= 0) {
+            LOGGER.info("[PrlDevops] maxAgents cap reached (active=" + activeAgents
+                    + ", max=" + maxAgents + "). Skipping provisioning.");
+            return Collections.emptyList();
+        }
+
+        PrlDevopsApiClient apiClient;
+        try {
+            apiClient = buildApiClient();
+        } catch (PrlApiException e) {
+            LOGGER.log(Level.WARNING, "[PrlDevops] Cannot build API client: " + e.getMessage(), e);
+            return Collections.emptyList();
+        }
+
+        Duration timeout = Duration.ofSeconds(template.getVmReadyTimeoutSeconds());
+        Duration pollInterval = Duration.ofSeconds(template.getVmReadyPollIntervalSeconds());
+
+        List<NodeProvisioner.PlannedNode> plannedNodes = new ArrayList<>();
+        for (int i = 0; i < toProvision; i++) {
+            try {
+                CloneRequest cloneRequest = new CloneRequest(
+                        "jenkins-" + label + "-" + System.currentTimeMillis(), null);
+                LOGGER.info("[PrlDevops] Requesting clone of '" + template.getBaseVmName()
+                        + "' for label '" + label + "'");
+                CloneResponse cloneResponse = apiClient.cloneVm(template.getBaseVmName(), cloneRequest);
+                String vmId = cloneResponse.getId();
+                LOGGER.info("[PrlDevops] Clone requested; VM ID=" + vmId
+                        + ". Submitting planned node future.");
+
+                plannedNodes.add(new PrlDevopsPlannedNode(
+                        name, template, vmId, apiClient, timeout, pollInterval,
+                        Computer.threadPoolForRemoting));
+            } catch (PrlApiException e) {
+                LOGGER.log(Level.WARNING,
+                        "[PrlDevops] cloneVm() failed for template '" + template.getBaseVmName()
+                                + "': " + e.getMessage(), e);
+                // Continue trying the remaining slots — Jenkins will retry this label later.
+            }
+        }
+        return plannedNodes;
+    }
+
+    // -------------------------------------------------------------------------
+    // API client factory — protected so subclasses / tests can override
+    // -------------------------------------------------------------------------
+
+    /**
+     * Resolves the bearer token from the configured credentials and constructs
+     * a {@link PrlDevopsApiClient} pointed at the configured service URL.
+     *
+     * <p>Protected so tests can override and inject a mock client.
+     *
+     * @throws PrlApiException if credentials cannot be resolved.
+     */
+    protected PrlDevopsApiClient buildApiClient() throws PrlApiException {
+        String token = resolveToken();
+        return new PrlDevopsHttpClient.Builder()
+                .baseUrl(serviceUrl)
+                .bearerToken(token)
+                .mode(connectionMode != null
+                        ? com.parallels.jenkins.api.ConnectionMode.valueOf(connectionMode.name())
+                        : com.parallels.jenkins.api.ConnectionMode.HOST)
+                .build();
+    }
+
+    /**
+     * Looks up the configured credentials and returns a bearer token string.
+     *
+     * <p>Only {@link StringCredentials} (direct bearer token) are supported for
+     * provisioning. Username/password credentials require an interactive auth flow
+     * and are not suitable for background provisioning.
+     *
+     * @throws PrlApiException if credentials are not configured or cannot be found.
+     */
+    private String resolveToken() throws PrlApiException {
+        if (Util.fixEmptyAndTrim(credentialsId) == null) {
+            throw new PrlApiException("No credentials configured on cloud '" + name + "'");
+        }
+        StringCredentials sc = CredentialsMatchers.firstOrNull(
+                CredentialsProvider.lookupCredentials(
+                        StringCredentials.class,
+                        Jenkins.get(),
+                        ACL.SYSTEM,
+                        Collections.emptyList()),
+                CredentialsMatchers.withId(credentialsId));
+        if (sc != null) {
+            return sc.getSecret().getPlainText();
+        }
+        throw new PrlApiException(
+                "Credentials '" + credentialsId + "' not found or not a bearer-token Secret Text credential.");
     }
 
     @Extension

@@ -33,6 +33,8 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     private final String sshCredentialsId;
     private final String remoteFs;
     private int numExecutors = 1;
+    private int vmReadyTimeoutSeconds = 300;
+    private int vmReadyPollIntervalSeconds = 10;
 
     @DataBoundConstructor
     public AgentTemplate(String templateLabel, String baseVmName, String sshCredentialsId, String remoteFs) {
@@ -47,10 +49,22 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     public String getSshCredentialsId() { return sshCredentialsId; }
     public String getRemoteFs() { return remoteFs; }
     public int getNumExecutors() { return numExecutors; }
+    public int getVmReadyTimeoutSeconds() { return vmReadyTimeoutSeconds; }
+    public int getVmReadyPollIntervalSeconds() { return vmReadyPollIntervalSeconds; }
 
     @DataBoundSetter
     public void setNumExecutors(int numExecutors) {
         this.numExecutors = numExecutors;
+    }
+
+    @DataBoundSetter
+    public void setVmReadyTimeoutSeconds(int vmReadyTimeoutSeconds) {
+        this.vmReadyTimeoutSeconds = vmReadyTimeoutSeconds;
+    }
+
+    @DataBoundSetter
+    public void setVmReadyPollIntervalSeconds(int vmReadyPollIntervalSeconds) {
+        this.vmReadyPollIntervalSeconds = vmReadyPollIntervalSeconds;
     }
 
     /**

@@ -20,17 +20,19 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
 
     private static final long serialVersionUID = 1L;
 
+    private final String cloudName;
     private final AgentTemplate template;
     private final String vmId;
     private final String ipAddress;
 
-    public PrlDevopsSlave(AgentTemplate template, String vmId, String ipAddress)
+    public PrlDevopsSlave(String cloudName, AgentTemplate template, String vmId, String ipAddress)
             throws Descriptor.FormException, IOException {
         super(
                 "prl-" + vmId,
                 template.getRemoteFs(),
                 new SSHLauncher(ipAddress, 22, template.getSshCredentialsId())
         );
+        this.cloudName = cloudName;
         this.template = template;
         this.vmId = vmId;
         this.ipAddress = ipAddress;
@@ -40,6 +42,7 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
         setRetentionStrategy(RetentionStrategy.NOOP);
     }
 
+    public String getCloudName() { return cloudName; }
     public AgentTemplate getTemplate() { return template; }
     public String getVmId() { return vmId; }
     public String getIpAddress() { return ipAddress; }
