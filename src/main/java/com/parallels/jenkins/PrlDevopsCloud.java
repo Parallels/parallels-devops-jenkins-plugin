@@ -8,13 +8,16 @@ import com.parallels.jenkins.api.PrlDevopsApiClient;
 import com.parallels.jenkins.api.PrlDevopsHttpClient;
 import com.parallels.jenkins.api.dto.CloneRequest;
 import com.parallels.jenkins.api.dto.CloneResponse;
+import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import hudson.Extension;
+import hudson.model.AsyncPeriodicWork;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.model.Label;
 import hudson.model.Node;
+import hudson.model.TaskListener;
 import hudson.security.ACL;
 import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
@@ -38,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -109,10 +113,15 @@ public class PrlDevopsCloud extends Cloud {
             return Collections.emptyList();
         }
 
-        // Count currently registered agents that belong to this cloud.
+        // Count only nodes that are actually online or connecting — offline nodes (e.g. externally
+        // deleted VMs) must not consume budget; the reconciler will remove them asynchronously.
         long activeAgents = Jenkins.get().getNodes().stream()
                 .filter(n -> n instanceof PrlDevopsSlave
                         && name.equals(((PrlDevopsSlave) n).getCloudName()))
+                .filter(n -> {
+                    Computer c = n.toComputer();
+                    return c != null && (c.isOnline() || c.isConnecting());
+                })
                 .count();
 
         int budget = maxAgents > 0 ? (int) Math.max(0, maxAgents - activeAgents) : excessWorkload;
@@ -186,16 +195,22 @@ public class PrlDevopsCloud extends Cloud {
     /**
      * Looks up the configured credentials and returns a bearer token string.
      *
-     * <p>Only {@link StringCredentials} (direct bearer token) are supported for
-     * provisioning. Username/password credentials require an interactive auth flow
-     * and are not suitable for background provisioning.
+     * <p>Supports two credential types:
+     * <ul>
+     *   <li>{@link StringCredentials} — the secret text is used directly as a bearer token.</li>
+     *   <li>{@link StandardUsernamePasswordCredentials} — the plugin POSTs to
+     *       {@code POST /api/v1/auth/token} to exchange username+password for a token.</li>
+     * </ul>
      *
-     * @throws PrlApiException if credentials are not configured or cannot be found.
+     * @throws PrlApiException if credentials are not configured, cannot be found, or the
+     *                         auth exchange fails.
      */
     private String resolveToken() throws PrlApiException {
         if (Util.fixEmptyAndTrim(credentialsId) == null) {
             throw new PrlApiException("No credentials configured on cloud '" + name + "'");
         }
+
+        // 1. Try Secret Text (direct bearer token)
         StringCredentials sc = CredentialsMatchers.firstOrNull(
                 CredentialsProvider.lookupCredentials(
                         StringCredentials.class,
@@ -206,8 +221,160 @@ public class PrlDevopsCloud extends Cloud {
         if (sc != null) {
             return sc.getSecret().getPlainText();
         }
+
+        // 2. Try Username + Password — exchange for a token via the auth endpoint
+        StandardUsernamePasswordCredentials upc = CredentialsMatchers.firstOrNull(
+                CredentialsProvider.lookupCredentials(
+                        StandardUsernamePasswordCredentials.class,
+                        Jenkins.get(),
+                        ACL.SYSTEM,
+                        Collections.emptyList()),
+                CredentialsMatchers.withId(credentialsId));
+        if (upc != null) {
+            return fetchTokenWithPassword(upc);
+        }
+
         throw new PrlApiException(
-                "Credentials '" + credentialsId + "' not found or not a bearer-token Secret Text credential.");
+                "Credentials '" + credentialsId + "' not found. Configure a 'Secret text' "
+                        + "(bearer token) or 'Username with password' credential.");
+    }
+
+    /**
+     * Exchanges a username+password pair for a bearer token by calling
+     * {@code POST {serviceUrl}/api/v1/auth/token}.
+     */
+    private String fetchTokenWithPassword(StandardUsernamePasswordCredentials upc) throws PrlApiException {
+        String base = Util.fixEmptyAndTrim(serviceUrl);
+        if (base == null) {
+            throw new PrlApiException("Service URL is not configured on cloud '" + name + "'");
+        }
+        if (!base.endsWith("/")) {
+            base += "/";
+        }
+        String authUrl = base + "api/v1/auth/token";
+
+        String username = upc.getUsername().replace("\"", "\\\"");
+        String password = upc.getPassword().getPlainText().replace("\"", "\\\"");
+        String jsonBody = "{\"email\":\"" + username + "\",\"password\":\"" + password + "\"}";
+
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(authUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+            HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+            if (res.statusCode() == 200) {
+                java.util.regex.Matcher m =
+                        java.util.regex.Pattern.compile("\"token\"\\s*:\\s*\"([^\"]+)\"")
+                                .matcher(res.body());
+                if (m.find()) {
+                    return m.group(1);
+                }
+                throw new PrlApiException(
+                        "Auth response did not contain a 'token' field. Body: " + res.body());
+            }
+            throw new PrlApiException(
+                    "Auth token request failed. HTTP " + res.statusCode() + ": " + res.body());
+        } catch (IOException e) {
+            throw new PrlApiException("Network error during auth token fetch: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new PrlApiException("Auth token fetch interrupted", e);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Node reconciler — removes Jenkins nodes whose backing VMs no longer exist
+    // -------------------------------------------------------------------------
+
+    /**
+     * Background worker that runs every 60 seconds and removes any
+     * {@link PrlDevopsSlave} node whose VM has been deleted outside the plugin
+     * (e.g. manually via prl-devops-service UI or API).
+     *
+     * <p>Only offline nodes are inspected — online nodes are by definition healthy.
+     * A node is removed when:
+     * <ul>
+     *   <li>Its owning {@link PrlDevopsCloud} no longer exists in Jenkins, or</li>
+     *   <li>Calling {@code getVmStatus()} returns an error state or throws a
+     *       {@link PrlApiException} (typically HTTP 404 — VM not found).</li>
+     * </ul>
+     */
+    @Extension
+    public static class NodeReconciler extends AsyncPeriodicWork {
+
+        private static final Logger LOG = Logger.getLogger(NodeReconciler.class.getName());
+
+        public NodeReconciler() {
+            super("PrlDevops Node Reconciler");
+        }
+
+        @Override
+        public long getRecurrencePeriod() {
+            return MIN; // every 60 seconds
+        }
+
+        @Override
+        protected void execute(TaskListener listener) {
+            Jenkins jenkins = Jenkins.get();
+            for (Node node : new ArrayList<>(jenkins.getNodes())) {
+                if (!(node instanceof PrlDevopsSlave)) {
+                    continue;
+                }
+                PrlDevopsSlave slave = (PrlDevopsSlave) node;
+                Computer computer = slave.toComputer();
+
+                // Online nodes are healthy — skip.
+                if (computer != null && computer.isOnline()) {
+                    continue;
+                }
+
+                // For both offline AND connecting nodes, verify the VM still exists.
+                // A "launching..." node whose VM was externally deleted must be removed
+                // immediately rather than waiting for SSH to exhaust all retries (~3 min).
+                Cloud cloud = jenkins.clouds.getByName(slave.getCloudName());
+                if (!(cloud instanceof PrlDevopsCloud)) {
+                    LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
+                            + " — owning cloud '" + slave.getCloudName() + "' no longer exists.");
+                    removeNode(jenkins, slave);
+                    continue;
+                }
+
+                PrlDevopsCloud prlCloud = (PrlDevopsCloud) cloud;
+                try {
+                    PrlDevopsApiClient client = prlCloud.buildApiClient();
+                    VmStatusResponse status = client.getVmStatus(slave.getVmId());
+                    String state = status.getStatus() != null
+                            ? status.getStatus().toLowerCase(Locale.ROOT) : "";
+                    if ("error".equals(state)) {
+                        LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
+                                + " — VM " + slave.getVmId() + " is in error state.");
+                        removeNode(jenkins, slave);
+                    }
+                    // stopped/starting/pending — VM exists, leave it; SSH launcher will connect when ready.
+                } catch (PrlApiException e) {
+                    // HTTP 404 or network error — VM is gone, remove the stale node immediately.
+                    LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
+                            + " — VM " + slave.getVmId() + " no longer exists: " + e.getMessage());
+                    removeNode(jenkins, slave);
+                }
+            }
+        }
+
+        private static void removeNode(Jenkins jenkins, PrlDevopsSlave slave) {
+            try {
+                jenkins.removeNode(slave);
+            } catch (IOException e) {
+                LOG.log(Level.WARNING,
+                        "[PrlDevops] Failed to remove stale node " + slave.getNodeName() + ": " + e.getMessage(), e);
+            }
+        }
     }
 
     @Extension

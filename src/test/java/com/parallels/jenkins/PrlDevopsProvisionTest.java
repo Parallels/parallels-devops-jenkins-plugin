@@ -59,6 +59,11 @@ public class PrlDevopsProvisionTest {
         }
 
         @Override
+        public void startVm(String id) {
+            // no-op stub — VM is already in a startable state in tests
+        }
+
+        @Override
         public VmStatusResponse getVmStatus(String id) throws PrlApiException {
             VmStatusResponse resp = new VmStatusResponse();
             resp.setId(id);

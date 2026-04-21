@@ -134,6 +134,35 @@ class PrlDevopsHttpClientTest {
     }
 
     // -------------------------------------------------------------------------
+    // startVm
+    // -------------------------------------------------------------------------
+
+    @Test
+    void startVm_hostMode_sendsCorrectGetRequest() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200));
+
+        assertDoesNotThrow(() -> hostClient.startVm(VM_ID));
+
+        RecordedRequest req = server.takeRequest();
+        assertEquals("GET", req.getMethod());
+        assertEquals("/api/v1/machines/" + VM_ID + "/start", req.getPath());
+        assertEquals("Bearer " + TOKEN, req.getHeader("Authorization"));
+    }
+
+    @Test
+    void startVm_orchestratorMode_usesOrchestratorPath() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200));
+
+        orchClient.startVm(VM_ID);
+
+        RecordedRequest req = server.takeRequest();
+        assertEquals("GET", req.getMethod());
+        assertEquals(
+                "/api/v1/orchestrator/hosts/" + HOST_ID + "/machines/" + VM_ID + "/start",
+                req.getPath());
+    }
+
+    // -------------------------------------------------------------------------
     // deleteVm
     // -------------------------------------------------------------------------
 

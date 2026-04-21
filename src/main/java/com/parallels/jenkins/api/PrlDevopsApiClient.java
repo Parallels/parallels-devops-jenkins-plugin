@@ -51,6 +51,22 @@ public interface PrlDevopsApiClient {
     VmStatusResponse getVmStatus(String vmId) throws PrlApiException;
 
     /**
+     * Starts a VM that is in the {@code stopped} state.
+     *
+     * <p>Maps to {@code GET /api/v1/machines/{vmId}/start} (host mode) or
+     * {@code GET /api/v1/orchestrator/hosts/{hostId}/machines/{vmId}/start}
+     * (orchestrator mode).
+     *
+     * <p>The API accepts the request and begins booting; the VM transitions
+     * through {@code stopped → starting → running}. Callers must subsequently
+     * poll {@link #waitForVmReady} to know when the VM is ready.
+     *
+     * @param vmId ID of the VM to start.
+     * @throws PrlApiException on HTTP error or network failure.
+     */
+    void startVm(String vmId) throws PrlApiException;
+
+    /**
      * Deletes a VM.
      *
      * <p>Maps to {@code DELETE /api/v1/machines/{vmId}} (host mode) or
@@ -68,6 +84,7 @@ public interface PrlDevopsApiClient {
      *
      * <p>State machine:
      * <pre>
+     *   stopped  → keep polling (VM may briefly show stopped immediately after start)
      *   pending  → keep polling
      *   starting → keep polling
      *   running  → return (success)

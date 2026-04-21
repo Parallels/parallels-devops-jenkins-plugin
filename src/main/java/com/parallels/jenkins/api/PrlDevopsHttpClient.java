@@ -98,6 +98,18 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
     }
 
     @Override
+    public void startVm(String vmId) throws PrlApiException {
+        String path = machinePath(vmId) + "/start";
+        HttpResponse<String> response = send(
+                HttpRequest.newBuilder()
+                        .uri(toUri(path))
+                        .header("Authorization", "Bearer " + bearerToken.getPlainText())
+                        .GET()
+                        .build());
+        requireSuccessful(response);
+    }
+
+    @Override
     public void deleteVm(String vmId) throws PrlApiException {
         String path = machinePath(vmId);
         HttpResponse<String> response = send(
@@ -124,9 +136,10 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
                     return status;
                 case "error":
                     throw new PrlApiException("VM '" + vmId + "' entered error state");
+                case "stopped":
                 case "pending":
                 case "starting":
-                    // keep polling
+                    // keep polling — VM transitions stopped → starting → running after a start call
                     break;
                 default:
                     throw new PrlApiException(

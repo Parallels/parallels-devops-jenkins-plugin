@@ -66,6 +66,15 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
                                             Duration pollInterval,
                                             ExecutorService executor) {
         Callable<Node> task = () -> {
+            LOGGER.info("[PrlDevops] Starting VM " + vmId);
+            try {
+                apiClient.startVm(vmId);
+            } catch (PrlApiException e) {
+                LOGGER.log(Level.WARNING,
+                        "[PrlDevops] startVm() failed for VM " + vmId + ": " + e.getMessage(), e);
+                try { apiClient.deleteVm(vmId); } catch (PrlApiException ignored) { }
+                throw e;
+            }
             LOGGER.info("[PrlDevops] Waiting for VM " + vmId + " to become ready"
                     + " (timeout=" + timeout + ", interval=" + pollInterval + ")");
             try {
