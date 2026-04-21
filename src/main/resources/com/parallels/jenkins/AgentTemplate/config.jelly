@@ -3,9 +3,36 @@
     <f:entry title="Template Label" field="templateLabel">
         <f:textbox />
     </f:entry>
-    <f:entry title="Base VM Name" field="baseVmName">
-        <f:textbox />
+
+    <f:entry title="VM Provisioning Mode" field="provisioningMode">
+        <f:radioBlock name="provisioningMode" value="CLONE"
+                      title="Clone existing VM"
+                      checked="${instance == null || instance.provisioningMode == 'CLONE' || instance.provisioningMode == null}">
+            <f:entry title="Base VM Name" field="baseVmName">
+                <f:textbox />
+            </f:entry>
+        </f:radioBlock>
+        <f:radioBlock name="provisioningMode" value="CATALOG"
+                      title="Create from catalog"
+                      checked="${instance != null and instance.provisioningMode == 'CATALOG'}">
+            <f:entry title="Architecture" field="architecture">
+                <f:select />
+            </f:entry>
+            <f:entry title="Catalog ID" field="catalogId">
+                <f:textbox placeholder="e.g. EMPTY-VM" />
+            </f:entry>
+            <f:entry title="Catalog Version" field="catalogVersion">
+                <f:textbox default="latest" />
+            </f:entry>
+            <f:entry title="Catalog URL" field="catalogUrl">
+                <f:textbox placeholder="https://devops-catalog.example.com" />
+            </f:entry>
+            <f:entry title="Catalog Credentials" field="catalogCredentialsId">
+                <c:select />
+            </f:entry>
+        </f:radioBlock>
     </f:entry>
+
     <f:entry title="SSH Credentials" field="sshCredentialsId">
         <c:select />
     </f:entry>

@@ -6,8 +6,11 @@ import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import com.parallels.jenkins.api.PrlDevopsApiClient;
 import com.parallels.jenkins.api.PrlDevopsHttpClient;
+import com.parallels.jenkins.api.dto.CatalogManifest;
 import com.parallels.jenkins.api.dto.CloneRequest;
 import com.parallels.jenkins.api.dto.CloneResponse;
+import com.parallels.jenkins.api.dto.CreateVmRequest;
+import com.parallels.jenkins.api.dto.CreateVmResponse;
 import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import hudson.Extension;
@@ -164,26 +167,84 @@ public class PrlDevopsCloud extends Cloud {
         List<NodeProvisioner.PlannedNode> plannedNodes = new ArrayList<>();
         for (int i = 0; i < toProvision; i++) {
             try {
-                CloneRequest cloneRequest = new CloneRequest(
-                        "jenkins-" + label + "-" + System.currentTimeMillis(), null);
-                LOGGER.info("[PrlDevops] Requesting clone of '" + template.getBaseVmName()
-                        + "' for label '" + label + "'");
-                CloneResponse cloneResponse = apiClient.cloneVm(template.getBaseVmName(), cloneRequest);
-                String vmId = cloneResponse.getId();
-                LOGGER.info("[PrlDevops] Clone requested; VM ID=" + vmId
-                        + ". Submitting planned node future.");
-
+                String vmId;
+                boolean startOnCreate;
+                if (template.getProvisioningMode() == VmProvisioningMode.CATALOG) {
+                    vmId = provisionFromCatalog(apiClient, template, label);
+                    startOnCreate = true; // API starts VM on creation
+                } else {
+                    vmId = provisionFromClone(apiClient, template, label);
+                    startOnCreate = false; // clone comes up stopped; PlannedNode calls startVm()
+                }
                 plannedNodes.add(new PrlDevopsPlannedNode(
                         name, template, vmId, apiClient, timeout, pollInterval,
-                        Computer.threadPoolForRemoting));
+                        startOnCreate, Computer.threadPoolForRemoting));
             } catch (PrlApiException e) {
                 LOGGER.log(Level.WARNING,
-                        "[PrlDevops] cloneVm() failed for template '" + template.getBaseVmName()
-                                + "': " + e.getMessage(), e);
-                // Continue trying the remaining slots — Jenkins will retry this label later.
+                        "[PrlDevops] Failed to provision VM for template '"
+                                + template.getBaseVmName() + "': " + e.getMessage(), e);
             }
         }
         return plannedNodes;
+    }
+
+    private String provisionFromClone(PrlDevopsApiClient apiClient,
+                                      AgentTemplate template,
+                                      Label label) throws PrlApiException {
+        CloneRequest cloneRequest = new CloneRequest(
+                "jenkins-" + label + "-" + System.currentTimeMillis(), null);
+        LOGGER.info("[PrlDevops] Requesting clone of '" + template.getBaseVmName()
+                + "' for label '" + label + "'");
+        CloneResponse cloneResponse = apiClient.cloneVm(template.getBaseVmName(), cloneRequest);
+        String vmId = cloneResponse.getId();
+        LOGGER.info("[PrlDevops] Clone requested; VM ID=" + vmId);
+        return vmId;
+    }
+
+    private String provisionFromCatalog(PrlDevopsApiClient apiClient,
+                                        AgentTemplate template,
+                                        Label label) throws PrlApiException {
+        String connection = buildCatalogConnectionString(template);
+        CatalogManifest manifest = new CatalogManifest(
+                template.getCatalogId(),
+                template.getCatalogVersion(),
+                connection);
+        String vmName = "jenkins-" + label + "-" + System.currentTimeMillis();
+        CreateVmRequest request = new CreateVmRequest(vmName, template.getArchitecture(), manifest);
+        LOGGER.info("[PrlDevops] Creating VM from catalog '" + template.getCatalogId()
+                + "' for label '" + label + "'");
+        CreateVmResponse response = apiClient.createVmFromCatalog(request);
+        String vmId = response.getId();
+        LOGGER.info("[PrlDevops] Catalog VM created; VM ID=" + vmId);
+        return vmId;
+    }
+
+    /**
+     * Resolves the catalog credentials and builds the connection string in the format:
+     * {@code host=username:password@https://catalog.example.com}
+     */
+    private String buildCatalogConnectionString(AgentTemplate template) throws PrlApiException {
+        String credId = template.getCatalogCredentialsId();
+        String catalogUrl = template.getCatalogUrl();
+        if (credId == null || credId.isBlank()) {
+            throw new PrlApiException("Catalog credentials ID is not configured on the template");
+        }
+        if (catalogUrl == null || catalogUrl.isBlank()) {
+            throw new PrlApiException("Catalog URL is not configured on the template");
+        }
+        java.util.List<StandardUsernamePasswordCredentials> matches =
+                CredentialsProvider.lookupCredentials(
+                        StandardUsernamePasswordCredentials.class,
+                        Jenkins.get(),
+                        ACL.SYSTEM,
+                        Collections.emptyList());
+        StandardUsernamePasswordCredentials cred = CredentialsMatchers.firstOrNull(
+                matches, CredentialsMatchers.withId(credId));
+        if (cred == null) {
+            throw new PrlApiException("Catalog credentials '" + credId + "' not found");
+        }
+        String url = catalogUrl.endsWith("/") ? catalogUrl.substring(0, catalogUrl.length() - 1) : catalogUrl;
+        return "host=" + cred.getUsername() + ":" + cred.getPassword().getPlainText() + "@" + url;
     }
 
     // -------------------------------------------------------------------------

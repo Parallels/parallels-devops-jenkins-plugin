@@ -3,6 +3,8 @@ package com.parallels.jenkins;
 import com.parallels.jenkins.api.PrlDevopsApiClient;
 import com.parallels.jenkins.api.dto.CloneRequest;
 import com.parallels.jenkins.api.dto.CloneResponse;
+import com.parallels.jenkins.api.dto.CreateVmRequest;
+import com.parallels.jenkins.api.dto.CreateVmResponse;
 import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import com.parallels.jenkins.api.exception.PrlApiTimeoutException;
@@ -61,6 +63,15 @@ public class PrlDevopsProvisionTest {
         @Override
         public void startVm(String id) {
             // no-op stub — VM is already in a startable state in tests
+        }
+
+        @Override
+        public CreateVmResponse createVmFromCatalog(CreateVmRequest request) {
+            CreateVmResponse resp = new CreateVmResponse();
+            resp.setId(vmId);
+            resp.setName(request.getName());
+            resp.setCurrentState("stopped");
+            return resp;
         }
 
         @Override

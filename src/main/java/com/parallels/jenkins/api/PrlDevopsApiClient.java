@@ -2,6 +2,8 @@ package com.parallels.jenkins.api;
 
 import com.parallels.jenkins.api.dto.CloneRequest;
 import com.parallels.jenkins.api.dto.CloneResponse;
+import com.parallels.jenkins.api.dto.CreateVmRequest;
+import com.parallels.jenkins.api.dto.CreateVmResponse;
 import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import com.parallels.jenkins.api.exception.PrlApiTimeoutException;
@@ -36,6 +38,22 @@ public interface PrlDevopsApiClient {
      * @throws PrlApiException on HTTP error or network failure.
      */
     CloneResponse cloneVm(String sourceVmId, CloneRequest request) throws PrlApiException;
+
+    /**
+     * Creates a new VM from a Parallels DevOps catalog entry.
+     *
+     * <p>Maps to {@code POST /api/v1/machines}.
+     *
+     * <p>The request includes {@code startOnCreate: true} so the VM boots
+     * immediately after creation. Callers must still poll {@link #waitForVmReady}
+     * because the VM will be in {@code stopped} state momentarily before transitioning
+     * to {@code running}.
+     *
+     * @param request Catalog VM creation parameters.
+     * @return {@link CreateVmResponse} containing the new VM's ID.
+     * @throws PrlApiException on HTTP error or network failure.
+     */
+    CreateVmResponse createVmFromCatalog(CreateVmRequest request) throws PrlApiException;
 
     /**
      * Returns the lightweight status of a VM.

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.parallels.jenkins.api.dto.CloneRequest;
 import com.parallels.jenkins.api.dto.CloneResponse;
+import com.parallels.jenkins.api.dto.CreateVmRequest;
+import com.parallels.jenkins.api.dto.CreateVmResponse;
 import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import com.parallels.jenkins.api.exception.PrlApiTimeoutException;
@@ -82,6 +84,22 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
                         .build());
         requireSuccessful(response);
         return deserialize(response.body(), CloneResponse.class);
+    }
+
+    @Override
+    public CreateVmResponse createVmFromCatalog(CreateVmRequest request) throws PrlApiException {
+        // Catalog creation always targets /api/v1/machines regardless of mode
+        String path = "/api/v1/machines";
+        String body = serialize(request);
+        HttpResponse<String> response = send(
+                HttpRequest.newBuilder()
+                        .uri(toUri(path))
+                        .header("Content-Type", CONTENT_TYPE_JSON)
+                        .header("Authorization", "Bearer " + bearerToken.getPlainText())
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build());
+        requireSuccessful(response);
+        return deserialize(response.body(), CreateVmResponse.class);
     }
 
     @Override

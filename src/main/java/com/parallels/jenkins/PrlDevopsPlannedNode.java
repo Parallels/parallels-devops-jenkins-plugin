@@ -37,8 +37,12 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
      * @param vmId        ID of the newly cloned VM returned by the API.
      * @param apiClient   API client used to poll status and clean up on failure.
      * @param timeout     Maximum time to wait for the VM to reach {@code running}.
-     * @param pollInterval Time between polling attempts.
-     * @param executor    Thread pool on which the wait loop is executed.
+     * @param pollInterval  Time between polling attempts.
+     * @param startOnCreate When {@code true} the VM was created with {@code startOnCreate=true}
+     *                      and is already booting — {@code startVm()} must NOT be called again.
+     *                      When {@code false} (clone mode) the VM is stopped after cloning and
+     *                      must be explicitly started.
+     * @param executor      Thread pool on which the wait loop is executed.
      */
     public PrlDevopsPlannedNode(String cloudName,
                                 AgentTemplate template,
@@ -46,10 +50,12 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
                                 PrlDevopsApiClient apiClient,
                                 Duration timeout,
                                 Duration pollInterval,
+                                boolean startOnCreate,
                                 ExecutorService executor) {
         super(
                 "prl-" + vmId,
-                submitAsync(cloudName, template, vmId, apiClient, timeout, pollInterval, executor),
+                submitAsync(cloudName, template, vmId, apiClient, timeout, pollInterval,
+                        startOnCreate, executor),
                 template.getNumExecutors()
         );
     }
@@ -64,16 +70,22 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
                                             PrlDevopsApiClient apiClient,
                                             Duration timeout,
                                             Duration pollInterval,
+                                            boolean startOnCreate,
                                             ExecutorService executor) {
         Callable<Node> task = () -> {
-            LOGGER.info("[PrlDevops] Starting VM " + vmId);
-            try {
-                apiClient.startVm(vmId);
-            } catch (PrlApiException e) {
-                LOGGER.log(Level.WARNING,
-                        "[PrlDevops] startVm() failed for VM " + vmId + ": " + e.getMessage(), e);
-                try { apiClient.deleteVm(vmId); } catch (PrlApiException ignored) { }
-                throw e;
+            if (startOnCreate) {
+                LOGGER.info("[PrlDevops] VM " + vmId
+                        + " was created with startOnCreate=true — skipping startVm()");
+            } else {
+                LOGGER.info("[PrlDevops] Starting VM " + vmId);
+                try {
+                    apiClient.startVm(vmId);
+                } catch (PrlApiException e) {
+                    LOGGER.log(Level.WARNING,
+                            "[PrlDevops] startVm() failed for VM " + vmId + ": " + e.getMessage(), e);
+                    try { apiClient.deleteVm(vmId); } catch (PrlApiException ignored) { }
+                    throw e;
+                }
             }
             LOGGER.info("[PrlDevops] Waiting for VM " + vmId + " to become ready"
                     + " (timeout=" + timeout + ", interval=" + pollInterval + ")");

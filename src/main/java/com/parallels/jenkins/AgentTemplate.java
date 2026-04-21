@@ -4,6 +4,7 @@ import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
@@ -36,6 +37,14 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     private int vmReadyTimeoutSeconds = 300;
     private int vmReadyPollIntervalSeconds = 10;
 
+    // ---- Catalog provisioning fields (only used when provisioningMode == CATALOG) ----
+    private VmProvisioningMode provisioningMode = VmProvisioningMode.CLONE;
+    private String architecture = "arm64";
+    private String catalogId;
+    private String catalogVersion = "latest";
+    private String catalogUrl;
+    private String catalogCredentialsId;
+
     @DataBoundConstructor
     public AgentTemplate(String templateLabel, String baseVmName, String sshCredentialsId, String remoteFs) {
         this.templateLabel = templateLabel;
@@ -51,6 +60,12 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     public int getNumExecutors() { return numExecutors; }
     public int getVmReadyTimeoutSeconds() { return vmReadyTimeoutSeconds; }
     public int getVmReadyPollIntervalSeconds() { return vmReadyPollIntervalSeconds; }
+    public VmProvisioningMode getProvisioningMode() { return provisioningMode; }
+    public String getArchitecture() { return architecture; }
+    public String getCatalogId() { return catalogId; }
+    public String getCatalogVersion() { return catalogVersion; }
+    public String getCatalogUrl() { return catalogUrl; }
+    public String getCatalogCredentialsId() { return catalogCredentialsId; }
 
     @DataBoundSetter
     public void setNumExecutors(int numExecutors) {
@@ -65,6 +80,28 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     @DataBoundSetter
     public void setVmReadyPollIntervalSeconds(int vmReadyPollIntervalSeconds) {
         this.vmReadyPollIntervalSeconds = vmReadyPollIntervalSeconds;
+    }
+
+    @DataBoundSetter
+    public void setProvisioningMode(VmProvisioningMode provisioningMode) {
+        this.provisioningMode = provisioningMode != null ? provisioningMode : VmProvisioningMode.CLONE;
+    }
+
+    @DataBoundSetter
+    public void setArchitecture(String architecture) { this.architecture = architecture; }
+
+    @DataBoundSetter
+    public void setCatalogId(String catalogId) { this.catalogId = catalogId; }
+
+    @DataBoundSetter
+    public void setCatalogVersion(String catalogVersion) { this.catalogVersion = catalogVersion; }
+
+    @DataBoundSetter
+    public void setCatalogUrl(String catalogUrl) { this.catalogUrl = catalogUrl; }
+
+    @DataBoundSetter
+    public void setCatalogCredentialsId(String catalogCredentialsId) {
+        this.catalogCredentialsId = catalogCredentialsId;
     }
 
     /**
@@ -103,6 +140,40 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
                             CredentialsMatchers.always()
                     )
                     .includeCurrentValue(sshCredentialsId);
+        }
+
+        @POST
+        public ListBoxModel doFillCatalogCredentialsIdItems(@QueryParameter String catalogCredentialsId) {
+            Jenkins jenkins = Jenkins.get();
+            if (!jenkins.hasPermission(Jenkins.ADMINISTER)) {
+                return new StandardListBoxModel().includeCurrentValue(catalogCredentialsId);
+            }
+            return new StandardListBoxModel()
+                    .includeEmptyValue()
+                    .includeMatchingAs(
+                            ACL.SYSTEM,
+                            jenkins,
+                            StandardUsernamePasswordCredentials.class,
+                            Collections.emptyList(),
+                            CredentialsMatchers.always()
+                    )
+                    .includeCurrentValue(catalogCredentialsId);
+        }
+
+        public ListBoxModel doFillArchitectureItems(@QueryParameter String architecture) {
+            ListBoxModel items = new ListBoxModel();
+            items.add("arm64", "arm64");
+            items.add("x86_64", "x86_64");
+            return items;
+        }
+
+        public hudson.util.FormValidation doCheckCatalogId(@QueryParameter String catalogId,
+                                                           @QueryParameter String provisioningMode) {
+            if ("CATALOG".equals(provisioningMode)
+                    && (catalogId == null || catalogId.isBlank())) {
+                return hudson.util.FormValidation.error("Catalog ID is required");
+            }
+            return hudson.util.FormValidation.ok();
         }
     }
 }

@@ -1,7 +1,10 @@
 package com.parallels.jenkins.api;
 
+import com.parallels.jenkins.api.dto.CatalogManifest;
 import com.parallels.jenkins.api.dto.CloneRequest;
 import com.parallels.jenkins.api.dto.CloneResponse;
+import com.parallels.jenkins.api.dto.CreateVmRequest;
+import com.parallels.jenkins.api.dto.CreateVmResponse;
 import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import com.parallels.jenkins.api.exception.PrlApiTimeoutException;
@@ -160,6 +163,57 @@ class PrlDevopsHttpClientTest {
         assertEquals(
                 "/api/v1/orchestrator/hosts/" + HOST_ID + "/machines/" + VM_ID + "/start",
                 req.getPath());
+    }
+
+    // -------------------------------------------------------------------------
+    // createVmFromCatalog
+    // -------------------------------------------------------------------------
+
+    @Test
+    void createVmFromCatalog_sendsPostToMachinesEndpoint() throws Exception {
+        String responseBody = "{\"id\":\"" + VM_ID + "\",\"name\":\"test-vm\","
+                + "\"owner\":\"user\",\"current_state\":\"stopped\"}";
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody(responseBody));
+
+        CatalogManifest manifest = new CatalogManifest(
+                "EMPTY-VM", "latest", "host=user:pass@https://catalog.example.com");
+        CreateVmRequest request = new CreateVmRequest("test-vm", "arm64", manifest);
+        CreateVmResponse response = hostClient.createVmFromCatalog(request);
+
+        assertEquals(VM_ID, response.getId());
+        assertEquals("stopped", response.getCurrentState());
+
+        RecordedRequest req = server.takeRequest();
+        assertEquals("POST", req.getMethod());
+        assertEquals("/api/v1/machines", req.getPath());
+        assertEquals("Bearer " + TOKEN, req.getHeader("Authorization"));
+        String body = req.getBody().readUtf8();
+        assertTrue(body.contains("\"startOnCreate\":true"));
+        assertTrue(body.contains("\"architecture\":\"arm64\""));
+        assertTrue(body.contains("\"catalog_id\":\"EMPTY-VM\""));
+    }
+
+    @Test
+    void createVmFromCatalog_usesRootPathEvenInOrchestratorMode() throws Exception {
+        // catalog creation always uses /api/v1/machines, not the orchestrator path
+        String responseBody = "{\"id\":\"" + VM_ID + "\",\"name\":\"test-vm\","
+                + "\"owner\":\"user\",\"current_state\":\"stopped\"}";
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody(responseBody));
+
+        CatalogManifest manifest = new CatalogManifest(
+                "EMPTY-VM", "latest", "host=user:pass@https://catalog.example.com");
+        CreateVmRequest request = new CreateVmRequest("test-vm", "arm64", manifest);
+        orchClient.createVmFromCatalog(request);
+
+        RecordedRequest req = server.takeRequest();
+        assertEquals("POST", req.getMethod());
+        assertEquals("/api/v1/machines", req.getPath());
     }
 
     // -------------------------------------------------------------------------
