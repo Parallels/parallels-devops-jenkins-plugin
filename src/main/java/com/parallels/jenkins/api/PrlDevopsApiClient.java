@@ -69,9 +69,10 @@ public interface PrlDevopsApiClient {
     /**
      * Deletes a VM.
      *
-     * <p>Maps to {@code DELETE /api/v1/machines/{vmId}} (host mode) or
-     * {@code DELETE /api/v1/orchestrator/hosts/{hostId}/machines/{vmId}}
-     * (orchestrator mode). The API returns {@code 202 Accepted} with no body.
+     * <p>Maps to {@code DELETE /api/v1/machines/{vmId}?force=true} (host mode) or
+     * {@code DELETE /api/v1/orchestrator/hosts/{hostId}/machines/{vmId}?force=true}
+     * (orchestrator mode). The {@code force=true} parameter allows deletion of a
+     * running VM without stopping it first. The API returns {@code 202 Accepted} with no body.
      *
      * @param vmId ID of the VM to delete.
      * @throws PrlApiException on HTTP error or network failure.

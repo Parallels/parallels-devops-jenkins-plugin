@@ -11,13 +11,16 @@ import com.parallels.jenkins.api.dto.CloneResponse;
 import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import hudson.Extension;
+import hudson.model.AbstractBuild;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.model.Label;
 import hudson.model.Node;
+import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.model.listeners.RunListener;
 import hudson.security.ACL;
 import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
@@ -113,14 +116,28 @@ public class PrlDevopsCloud extends Cloud {
             return Collections.emptyList();
         }
 
-        // Count only nodes that are actually online or connecting — offline nodes (e.g. externally
-        // deleted VMs) must not consume budget; the reconciler will remove them asynchronously.
+        // Count only nodes that are genuinely active:
+        //   - isOnline()      → SSH connected, build may be running
+        //   - isConnecting()  → SSH launcher is retrying, BUT only within the VM-ready
+        //                       timeout window.  Nodes that are still "connecting" after
+        //                       2× the timeout are stale leftovers from a previous Jenkins
+        //                       session and must NOT consume budget (the reconciler will
+        //                       remove them once the VM-status check detects them as gone).
         long activeAgents = Jenkins.get().getNodes().stream()
                 .filter(n -> n instanceof PrlDevopsSlave
                         && name.equals(((PrlDevopsSlave) n).getCloudName()))
                 .filter(n -> {
                     Computer c = n.toComputer();
-                    return c != null && (c.isOnline() || c.isConnecting());
+                    if (c == null) return false;
+                    if (c.isOnline()) return true;
+                    if (c.isConnecting()) {
+                        PrlDevopsSlave prl = (PrlDevopsSlave) n;
+                        long ageSeconds =
+                                (System.currentTimeMillis() - prl.getProvisionedAt()) / 1000L;
+                        long graceSeconds = prl.getTemplate().getVmReadyTimeoutSeconds() * 2L;
+                        return ageSeconds < graceSeconds;
+                    }
+                    return false;
                 })
                 .count();
 
@@ -330,14 +347,16 @@ public class PrlDevopsCloud extends Cloud {
                 PrlDevopsSlave slave = (PrlDevopsSlave) node;
                 Computer computer = slave.toComputer();
 
-                // Online nodes are healthy — skip.
-                if (computer != null && computer.isOnline()) {
+                // Computer not yet initialised — node was just added; skip this cycle.
+                if (computer == null) {
                     continue;
                 }
 
-                // For both offline AND connecting nodes, verify the VM still exists.
-                // A "launching..." node whose VM was externally deleted must be removed
-                // immediately rather than waiting for SSH to exhaust all retries (~3 min).
+                // Online nodes are healthy — nothing to do.
+                if (computer.isOnline()) {
+                    continue;
+                }
+
                 Cloud cloud = jenkins.clouds.getByName(slave.getCloudName());
                 if (!(cloud instanceof PrlDevopsCloud)) {
                     LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
@@ -352,18 +371,68 @@ public class PrlDevopsCloud extends Cloud {
                     VmStatusResponse status = client.getVmStatus(slave.getVmId());
                     String state = status.getStatus() != null
                             ? status.getStatus().toLowerCase(Locale.ROOT) : "";
-                    if ("error".equals(state)) {
-                        LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
-                                + " — VM " + slave.getVmId() + " is in error state.");
-                        removeNode(jenkins, slave);
+
+                    switch (state) {
+                        case "running":
+                            if (computer.isConnecting()) {
+                                // SSH launcher is actively retrying.
+                                // Allow up to 2× the VM-ready timeout; after that the node
+                                // is either a stale leftover from a previous session or the
+                                // VM is genuinely unreachable — clean it up.
+                                long ageSeconds =
+                                        (System.currentTimeMillis() - slave.getProvisionedAt()) / 1000L;
+                                long graceSeconds =
+                                        slave.getTemplate().getVmReadyTimeoutSeconds() * 2L;
+                                if (ageSeconds >= graceSeconds) {
+                                    LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
+                                            + " — VM " + slave.getVmId()
+                                            + " is running but has been connecting for "
+                                            + ageSeconds + "s (grace=" + graceSeconds
+                                            + "s). Deleting stale VM.");
+                                    deleteVmQuietly(client, slave.getVmId());
+                                    removeNode(jenkins, slave);
+                                }
+                                // else: within grace period — leave it alone
+                            } else {
+                                // VM is running but there is no active SSH connection.
+                                // This means the connection died after a build completed
+                                // (RetentionStrategy.NOOP leaves nodes offline after disconnect).
+                                // Delete the VM and remove the node so Jenkins re-provisions
+                                // a fresh clone and releases any pending builds.
+                                LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
+                                        + " — VM " + slave.getVmId()
+                                        + " is running but node is offline with no active launch."
+                                        + " Deleting VM to free capacity.");
+                                deleteVmQuietly(client, slave.getVmId());
+                                removeNode(jenkins, slave);
+                            }
+                            break;
+                        case "error":
+                            LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
+                                    + " — VM " + slave.getVmId() + " is in error state.");
+                            deleteVmQuietly(client, slave.getVmId());
+                            removeNode(jenkins, slave);
+                            break;
+                        default:
+                            // stopped / starting / pending — VM is transitioning; leave it.
+                            break;
                     }
-                    // stopped/starting/pending — VM exists, leave it; SSH launcher will connect when ready.
                 } catch (PrlApiException e) {
-                    // HTTP 404 or network error — VM is gone, remove the stale node immediately.
+                    // HTTP 404 or network error — VM is gone, remove the stale node.
                     LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
                             + " — VM " + slave.getVmId() + " no longer exists: " + e.getMessage());
                     removeNode(jenkins, slave);
                 }
+            }
+        }
+
+        private static void deleteVmQuietly(PrlDevopsApiClient client, String vmId) {
+            try {
+                client.deleteVm(vmId);
+                LOG.info("[PrlDevops] Deleted VM " + vmId);
+            } catch (PrlApiException e) {
+                LOG.log(Level.WARNING, "[PrlDevops] Could not delete VM " + vmId
+                        + " during reconciliation: " + e.getMessage(), e);
             }
         }
 
@@ -373,6 +442,64 @@ public class PrlDevopsCloud extends Cloud {
             } catch (IOException e) {
                 LOG.log(Level.WARNING,
                         "[PrlDevops] Failed to remove stale node " + slave.getNodeName() + ": " + e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
+     * Tears down the cloned VM immediately after each build completes.
+     *
+     * <p>This makes every {@link PrlDevopsSlave} truly one-shot:
+     * <ol>
+     *   <li>Build finishes (success or failure)
+     *   <li>VM is deleted via the Parallels DevOps API
+     *   <li>Node is removed from Jenkins
+     * </ol>
+     * Without this, Jenkins sees the node as reusable and will not provision
+     * a new clone for the next queued build.
+     */
+    @Extension
+    public static final class BuildCompletionListener extends RunListener<Run<?, ?>> {
+
+        private static final Logger LOG =
+                Logger.getLogger(BuildCompletionListener.class.getName());
+
+        @Override
+        public void onFinalized(Run<?, ?> run) {
+            if (!(run instanceof AbstractBuild)) {
+                return; // Pipeline runs are not handled here
+            }
+            Node node = ((AbstractBuild<?, ?>) run).getBuiltOn();
+            if (!(node instanceof PrlDevopsSlave)) {
+                return;
+            }
+            PrlDevopsSlave slave = (PrlDevopsSlave) node;
+            Jenkins jenkins = Jenkins.get();
+
+            // Force-delete the VM (running or not) using ?force=true
+            Cloud cloud = jenkins.clouds.getByName(slave.getCloudName());
+            if (cloud instanceof PrlDevopsCloud) {
+                try {
+                    PrlDevopsApiClient client = ((PrlDevopsCloud) cloud).buildApiClient();
+                    client.deleteVm(slave.getVmId());
+                    LOG.info("[PrlDevops] Deleted VM " + slave.getVmId()
+                            + " after build " + run.getFullDisplayName());
+                } catch (PrlApiException e) {
+                    LOG.log(Level.WARNING,
+                            "[PrlDevops] Failed to delete VM " + slave.getVmId()
+                                    + " after build completion: " + e.getMessage(), e);
+                }
+            }
+
+            // Remove the node so Jenkins provisions a fresh clone for the next build
+            try {
+                jenkins.removeNode(slave);
+                LOG.info("[PrlDevops] Removed node " + slave.getNodeName()
+                        + " after build " + run.getFullDisplayName());
+            } catch (IOException e) {
+                LOG.log(Level.WARNING,
+                        "[PrlDevops] Failed to remove node " + slave.getNodeName()
+                                + " after build completion: " + e.getMessage(), e);
             }
         }
     }

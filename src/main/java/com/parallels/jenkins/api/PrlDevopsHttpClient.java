@@ -111,7 +111,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
 
     @Override
     public void deleteVm(String vmId) throws PrlApiException {
-        String path = machinePath(vmId);
+        String path = machinePath(vmId) + "?force=true";
         HttpResponse<String> response = send(
                 HttpRequest.newBuilder()
                         .uri(toUri(path))
@@ -133,13 +133,21 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
 
             switch (state) {
                 case "running":
-                    return status;
+                    // VM is running, but it is only ready for SSH once it has
+                    // acquired a real IP address. ip_configured is "-" until then.
+                    String ip = status.getIpConfigured();
+                    if (ip != null && !ip.isBlank() && !"-".equals(ip)) {
+                        return status;
+                    }
+                    // running but no IP yet — keep polling
+                    break;
                 case "error":
                     throw new PrlApiException("VM '" + vmId + "' entered error state");
                 case "stopped":
                 case "pending":
                 case "starting":
-                    // keep polling — VM transitions stopped → starting → running after a start call
+                case "suspended":
+                    // keep polling — transient states on the way to running
                     break;
                 default:
                     throw new PrlApiException(

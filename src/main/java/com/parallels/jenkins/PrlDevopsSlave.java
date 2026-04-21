@@ -24,6 +24,8 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
     private final AgentTemplate template;
     private final String vmId;
     private final String ipAddress;
+    /** Epoch-millis when this node was first created (set once, never changes). */
+    private final long provisionedAt;
 
     public PrlDevopsSlave(String cloudName, AgentTemplate template, String vmId, String ipAddress)
             throws Descriptor.FormException, IOException {
@@ -36,6 +38,7 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
         this.template = template;
         this.vmId = vmId;
         this.ipAddress = ipAddress;
+        this.provisionedAt = System.currentTimeMillis();
         setNumExecutors(template.getNumExecutors());
         setLabelString(template.getTemplateLabel());
         setMode(Node.Mode.NORMAL);
@@ -46,6 +49,7 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
     public AgentTemplate getTemplate() { return template; }
     public String getVmId() { return vmId; }
     public String getIpAddress() { return ipAddress; }
+    public long getProvisionedAt() { return provisionedAt; }
 
     @Override
     public int getNumExecutors() {
