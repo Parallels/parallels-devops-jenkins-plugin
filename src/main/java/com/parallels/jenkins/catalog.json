@@ -1,0 +1,855 @@
+[
+    {
+        "UBUNTU_24_04_BASE": [
+            {
+                "name": "ubuntu_24_04_base-arm64-24.04",
+                "id": "0377b81be9252f89eda6227aeb21b8c31cd219a5bbb0e72dc7b795db130dd260",
+                "catalog_id": "UBUNTU_24_04_BASE",
+                "description": "Ubuntu 24.04 Server for building pipelines",
+                "architecture": "arm64",
+                "version": "24.04",
+                "type": "pvm",
+                "tags": [
+                    "latest"
+                ],
+                "size": 5929304748,
+                "path": "/ubuntu_24_04_base",
+                "pack_filename": "ubuntu_24_04_base-arm64-24.04.pdpack",
+                "metadata_filename": "ubuntu_24_04_base-arm64-24.04.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2026-04-13T08:07:02.544466466Z",
+                "updated_at": "2026-04-13T08:07:02.544467047Z",
+                "last_downloaded_at": "2026-04-14T07:53:39.727194228Z",
+                "last_downloaded_user": "root",
+                "is_compressed": true,
+                "download_count": 8,
+                "pack_contents": [
+                    {
+                        "name": "ubuntu_24_04_base-arm64-24.04.meta",
+                        "path": "/ubuntu_24_04_base"
+                    },
+                    {
+                        "name": "ubuntu_24_04_base-arm64-24.04.pdpack",
+                        "path": "/ubuntu_24_04_base"
+                    }
+                ],
+                "pack_size": 2373822681
+            }
+        ]
+    },
+    {
+        "MACOS_BASE": [
+            {
+                "name": "macos_base-arm64-26.4",
+                "id": "436f7ee0fe6fc9843298782f999e2940c294722484a7f177b088201ccd3e6515",
+                "catalog_id": "MACOS_BASE",
+                "description": "jkhk",
+                "architecture": "arm64",
+                "version": "26.4",
+                "type": "macvm",
+                "tags": [
+                    "DEVELOPMENT",
+                    "latest"
+                ],
+                "size": 137472720136,
+                "path": "/macos_base",
+                "pack_filename": "macos_base-arm64-26.4.pdpack",
+                "metadata_filename": "macos_base-arm64-26.4.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2026-03-30T12:09:12.205600901Z",
+                "updated_at": "2026-03-30T15:28:16.460210315Z",
+                "is_compressed": true,
+                "pack_contents": [
+                    {
+                        "name": "macos_base-arm64-26.4.pdpack",
+                        "path": "/macos_base"
+                    },
+                    {
+                        "name": "macos_base-arm64-26.4.meta",
+                        "path": "/macos_base"
+                    }
+                ],
+                "pack_size": 32069424880
+            }
+        ]
+    },
+    {
+        "TIPI_NEW": [
+            {
+                "name": "tipi_new-arm64-2",
+                "id": "b1b6f013813469ae126d22f9710030c3ddea2eeb2323403277a092607ad31ded",
+                "catalog_id": "TIPI_NEW",
+                "description": "TIPI Working VM",
+                "architecture": "arm64",
+                "version": "2",
+                "type": "pvm",
+                "tags": [
+                    "latest"
+                ],
+                "size": 9414509168,
+                "path": "/tipi_new",
+                "pack_filename": "tipi_new-arm64-2.pdpack",
+                "metadata_filename": "tipi_new-arm64-2.meta",
+                "provider": {
+                    "type": "artifactory",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cm****hk",
+                        "repo": "de****os",
+                        "url": "ht****co"
+                    }
+                },
+                "created_at": "2026-02-06T11:32:38.176872772Z",
+                "updated_at": "2026-02-06T11:32:38.176873223Z",
+                "required_roles": [
+                    "USER"
+                ],
+                "last_downloaded_at": "2026-04-07T09:22:01.301988688Z",
+                "last_downloaded_user": "root",
+                "is_compressed": true,
+                "download_count": 69,
+                "pack_contents": [
+                    {
+                        "name": "tipi_new-arm64-2.meta",
+                        "path": "/tipi_new"
+                    },
+                    {
+                        "name": "tipi_new-arm64-2.pdpack",
+                        "path": "/tipi_new"
+                    }
+                ],
+                "pack_size": 3592365754
+            },
+            {
+                "name": "tipi_new-arm64-latest",
+                "id": "bc60572a76d289831a0ac7c0a256539b447d525c53f9113be151a6eed1370d26",
+                "catalog_id": "TIPI_NEW",
+                "description": "TIPI Working VM",
+                "architecture": "arm64",
+                "version": "latest",
+                "type": "pvm",
+                "size": 9414509168,
+                "path": "/tipi_new",
+                "pack_filename": "tipi_new-arm64-latest.pdpack",
+                "metadata_filename": "tipi_new-arm64-latest.meta",
+                "provider": {
+                    "type": "artifactory",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cm****hk",
+                        "repo": "de****on",
+                        "url": "ht****co"
+                    }
+                },
+                "created_at": "2026-02-06T08:57:12.836767229Z",
+                "updated_at": "2026-02-06T08:57:12.83676799Z",
+                "required_claims": [
+                    "DEVELOPER"
+                ],
+                "required_roles": [
+                    "USER"
+                ],
+                "last_downloaded_at": "2026-02-06T11:12:34.50634092Z",
+                "last_downloaded_user": "root",
+                "is_compressed": true,
+                "download_count": 1,
+                "pack_contents": [
+                    {
+                        "name": "tipi_new-arm64-latest.meta",
+                        "path": "/tipi_new"
+                    },
+                    {
+                        "name": "tipi_new-arm64-latest.pdpack",
+                        "path": "/tipi_new"
+                    }
+                ],
+                "pack_size": 3592365754
+            }
+        ]
+    },
+    {
+        "WIN_FULL": [
+            {
+                "name": "win_full-arm64-0.1",
+                "id": "8841b3a2e8eacdf95d15f3bdaa479279a9c2fe2ebb39fe150fde3474b9e63f1b",
+                "catalog_id": "WIN_FULL",
+                "description": "test file",
+                "architecture": "arm64",
+                "version": "0.1",
+                "type": "pvm",
+                "tags": [
+                    "test3",
+                    "latest"
+                ],
+                "size": 19444366327,
+                "path": "/win_full",
+                "pack_filename": "win_full-arm64-0.1.pdpack",
+                "metadata_filename": "win_full-arm64-0.1.meta",
+                "provider": {
+                    "type": "artifactory",
+                    "host": "devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "AK****d2",
+                        "repo": "cl****st",
+                        "url": "ht****et"
+                    }
+                },
+                "created_at": "2026-02-05T09:09:44.907859176Z",
+                "updated_at": "2026-02-05T09:09:44.907859586Z",
+                "is_compressed": true,
+                "pack_contents": [
+                    {
+                        "name": "win_full-arm64-0.1.meta",
+                        "path": "/win_full"
+                    },
+                    {
+                        "name": "win_full-arm64-0.1.pdpack",
+                        "path": "/win_full"
+                    }
+                ],
+                "pack_size": 10032277315
+            }
+        ]
+    },
+    {
+        "WIN_TEST": [
+            {
+                "name": "win_test-arm64-0.1",
+                "id": "ed15c375825ca071232f761485573a55d53698583026b95a8f04a8d07c1574da",
+                "catalog_id": "WIN_TEST",
+                "description": "test file",
+                "architecture": "arm64",
+                "version": "0.1",
+                "type": "pvm",
+                "tags": [
+                    "test3",
+                    "latest"
+                ],
+                "size": 1107210,
+                "path": "/win_test",
+                "pack_filename": "win_test-arm64-0.1.pdpack",
+                "metadata_filename": "win_test-arm64-0.1.meta",
+                "provider": {
+                    "type": "artifactory",
+                    "host": "devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "AK****d2",
+                        "repo": "cl****st",
+                        "url": "ht****et"
+                    }
+                },
+                "created_at": "2026-02-04T11:12:48.719585086Z",
+                "updated_at": "2026-02-04T11:12:48.719585978Z",
+                "last_downloaded_at": "2026-02-06T10:17:49.664268255Z",
+                "last_downloaded_user": "root",
+                "is_compressed": true,
+                "download_count": 8,
+                "pack_contents": [
+                    {
+                        "name": "win_test-arm64-0.1.meta",
+                        "path": "/win_test"
+                    },
+                    {
+                        "name": "win_test-arm64-0.1.pdpack",
+                        "path": "/win_test"
+                    }
+                ],
+                "pack_size": 9118
+            }
+        ]
+    },
+    {
+        "UBUNTU-LATEST-COMPRESSED": [
+            {
+                "name": "ubuntu-latest-compressed-arm64-24.04-1",
+                "id": "1c81e0f3e9e82b09ebe3257c278bde37a31568dcd18de5a62134501ce53554ca",
+                "catalog_id": "UBUNTU-LATEST-COMPRESSED",
+                "description": "Ubuntu 24.04 LTS",
+                "architecture": "arm64",
+                "version": "24.04-1",
+                "type": "pvm",
+                "tags": [
+                    "24-04",
+                    "latest"
+                ],
+                "size": 6296425656,
+                "path": "/ubuntu-latest-compressed",
+                "pack_filename": "ubuntu-latest-compressed-arm64-24.04-1.pdpack",
+                "metadata_filename": "ubuntu-latest-compressed-arm64-24.04-1.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-10-22T08:06:17.561430322Z",
+                "updated_at": "2025-10-22T08:06:17.561430832Z",
+                "required_roles": [
+                    "DEVELOPER"
+                ],
+                "last_downloaded_at": "2026-03-17T15:14:06.918966419Z",
+                "last_downloaded_user": "root",
+                "is_compressed": true,
+                "download_count": 8,
+                "pack_contents": [
+                    {
+                        "name": "ubuntu-latest-compressed-arm64-24.04-1.meta",
+                        "path": "/ubuntu-latest-compressed"
+                    },
+                    {
+                        "name": "ubuntu-latest-compressed-arm64-24.04-1.pdpack",
+                        "path": "/ubuntu-latest-compressed"
+                    }
+                ],
+                "pack_size": 2813046635,
+                "minimum_requirements": {
+                    "cpu": 2,
+                    "memory": 4096,
+                    "disk": 90000
+                }
+            },
+            {
+                "name": "ubuntu-latest-compressed-arm64-24.04",
+                "id": "ce233bcaae6f730f7bddc0b7c1bc5c4bbbfd34bde9d077c700d1c0f3c2954f43",
+                "catalog_id": "UBUNTU-LATEST-COMPRESSED",
+                "description": "Ubuntu 24.04 LTS",
+                "architecture": "arm64",
+                "version": "24.04",
+                "type": "pvm",
+                "tags": [
+                    "24-04"
+                ],
+                "size": 2813046635,
+                "path": "/ubuntu-latest-compressed",
+                "pack_filename": "ubuntu-latest-compressed-arm64-24.04.pdpack",
+                "metadata_filename": "ubuntu-latest-compressed-arm64-24.04.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-10-21T14:26:15.81377593Z",
+                "updated_at": "2025-10-21T14:26:15.813776421Z",
+                "required_roles": [
+                    "DEVELOPER"
+                ],
+                "last_downloaded_at": "2025-10-21T14:53:16.250103276Z",
+                "last_downloaded_user": "root",
+                "is_compressed": true,
+                "download_count": 1,
+                "pack_contents": [
+                    {
+                        "name": "ubuntu-latest-compressed-arm64-24.04.meta",
+                        "path": "/ubuntu-latest-compressed"
+                    },
+                    {
+                        "name": "ubuntu-latest-compressed-arm64-24.04.pdpack",
+                        "path": "/ubuntu-latest-compressed"
+                    }
+                ],
+                "pack_size": 2813046635,
+                "minimum_requirements": {
+                    "cpu": 2,
+                    "memory": 4096,
+                    "disk": 90000
+                }
+            }
+        ]
+    },
+    {
+        "UBUNTU-LATEST": [
+            {
+                "name": "ubuntu-latest-arm64-24.04-1",
+                "id": "4eb94dd9ad3b528d9dc225b12e720ef26c8d6651791855afcfec9d77e22d02e0",
+                "catalog_id": "UBUNTU-LATEST",
+                "description": "Ubuntu 24.04 LTS",
+                "architecture": "arm64",
+                "version": "24.04-1",
+                "type": "pvm",
+                "tags": [
+                    "latest"
+                ],
+                "size": 6296425656,
+                "path": "/ubuntu-latest",
+                "pack_filename": "ubuntu-latest-arm64-24.04-1.pdpack",
+                "metadata_filename": "ubuntu-latest-arm64-24.04-1.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-10-22T07:31:49.060334979Z",
+                "updated_at": "2025-10-22T07:31:49.06033545Z",
+                "required_roles": [
+                    "DEVELOPER"
+                ],
+                "last_downloaded_at": "2025-10-22T07:57:38.628316482Z",
+                "last_downloaded_user": "root",
+                "download_count": 1,
+                "pack_contents": [
+                    {
+                        "name": "ubuntu-latest-arm64-24.04-1.meta",
+                        "path": "/ubuntu-latest"
+                    },
+                    {
+                        "name": "ubuntu-latest-arm64-24.04-1.pdpack",
+                        "path": "/ubuntu-latest"
+                    }
+                ],
+                "pack_size": 6296434176,
+                "minimum_requirements": {
+                    "cpu": 2,
+                    "memory": 4096,
+                    "disk": 90000
+                }
+            },
+            {
+                "name": "ubuntu-latest-arm64-24.04",
+                "id": "d08c27385bf5160f18fc40d64254536384fcc91ace04b7bf4f7a40cf5918f932",
+                "catalog_id": "UBUNTU-LATEST",
+                "description": "Ubuntu 24.04 LTS",
+                "architecture": "arm64",
+                "version": "24.04",
+                "type": "pvm",
+                "size": 6296434176,
+                "path": "/ubuntu-latest",
+                "pack_filename": "ubuntu-latest-arm64-24.04.pdpack",
+                "metadata_filename": "ubuntu-latest-arm64-24.04.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-09-30T10:52:39.75646502Z",
+                "updated_at": "2025-09-30T10:52:39.756465471Z",
+                "required_roles": [
+                    "DEVELOPER"
+                ],
+                "last_downloaded_at": "2026-04-09T08:19:54.011099651Z",
+                "last_downloaded_user": "root",
+                "download_count": 40,
+                "pack_contents": [
+                    {
+                        "name": "ubuntu-latest-arm64-24.04.meta",
+                        "path": "/ubuntu-latest"
+                    },
+                    {
+                        "name": "ubuntu-latest-arm64-24.04.pdpack",
+                        "path": "/ubuntu-latest"
+                    }
+                ],
+                "pack_size": 6296434176,
+                "minimum_requirements": {
+                    "cpu": 2,
+                    "memory": 4096,
+                    "disk": 90000
+                }
+            }
+        ]
+    },
+    {
+        "TEST_VM": [
+            {
+                "name": "test_vm-arm64-v2",
+                "id": "6e8978048a92f11ef7aa884a7b72005733204e37d89e499d0c23bd0ee9dc8c89",
+                "catalog_id": "TEST_VM",
+                "description": "TEST VM",
+                "architecture": "arm64",
+                "version": "v2",
+                "type": "pvm",
+                "tags": [
+                    "latest"
+                ],
+                "size": 40850944,
+                "path": "/test_vm",
+                "pack_filename": "test_vm-arm64-v2.pdpack",
+                "metadata_filename": "test_vm-arm64-v2.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-09-30T14:33:01.559418666Z",
+                "updated_at": "2025-09-30T14:33:01.559419227Z",
+                "required_roles": [
+                    "USER"
+                ],
+                "tainted": true,
+                "tainted_by": "root",
+                "tainted_at": "2025-09-30T14:33:47.910700743Z",
+                "pack_contents": [
+                    {
+                        "name": "test_vm-arm64-v2.meta",
+                        "path": "/test_vm"
+                    },
+                    {
+                        "name": "test_vm-arm64-v2.pdpack",
+                        "path": "/test_vm"
+                    }
+                ],
+                "pack_size": 40850944,
+                "minimum_requirements": {
+                    "cpu": 4,
+                    "memory": 2048,
+                    "disk": 90000
+                }
+            },
+            {
+                "name": "test_vm-arm64-v1",
+                "id": "1d44b087a456558d852c5b502fade11356904d8081fde62d1f9ae8af73ebb72e",
+                "catalog_id": "TEST_VM",
+                "description": "TEST VM",
+                "architecture": "arm64",
+                "version": "v1",
+                "type": "pvm",
+                "size": 40850944,
+                "path": "/test_vm",
+                "pack_filename": "test_vm-arm64-v1.pdpack",
+                "metadata_filename": "test_vm-arm64-v1.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-09-30T14:32:50.266125901Z",
+                "updated_at": "2025-09-30T14:32:50.266126712Z",
+                "required_roles": [
+                    "USER"
+                ],
+                "revoked": true,
+                "revoked_at": "2025-09-30T14:33:44.11178459Z",
+                "revoked_by": "root",
+                "pack_contents": [
+                    {
+                        "name": "test_vm-arm64-v1.meta",
+                        "path": "/test_vm"
+                    },
+                    {
+                        "name": "test_vm-arm64-v1.pdpack",
+                        "path": "/test_vm"
+                    }
+                ],
+                "pack_size": 40850944,
+                "minimum_requirements": {
+                    "cpu": 4,
+                    "memory": 2048,
+                    "disk": 90000
+                }
+            },
+            {
+                "name": "test_vm-arm64-latest",
+                "id": "1efd5ff6e380d143eead955f9a1fd4123e13f2b9a0128c7860d68f8c3d99cd0b",
+                "catalog_id": "TEST_VM",
+                "description": "TEST VM",
+                "architecture": "arm64",
+                "version": "latest",
+                "type": "pvm",
+                "size": 40850944,
+                "path": "/test_vm",
+                "pack_filename": "test_vm-arm64-latest.pdpack",
+                "metadata_filename": "test_vm-arm64-latest.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-09-30T09:50:55.564562327Z",
+                "updated_at": "2025-09-30T09:50:55.564562758Z",
+                "required_roles": [
+                    "USER"
+                ],
+                "last_downloaded_at": "2026-04-01T08:26:39.307430189Z",
+                "last_downloaded_user": "root",
+                "download_count": 8,
+                "untainted_by": "root",
+                "pack_contents": [
+                    {
+                        "name": "test_vm-arm64-latest.meta",
+                        "path": "/test_vm"
+                    },
+                    {
+                        "name": "test_vm-arm64-latest.pdpack",
+                        "path": "/test_vm"
+                    }
+                ],
+                "pack_size": 40850944,
+                "minimum_requirements": {
+                    "cpu": 4,
+                    "memory": 2048,
+                    "disk": 90000
+                }
+            }
+        ]
+    },
+    {
+        "PORTAINER": [
+            {
+                "name": "portainer-arm64-v1",
+                "id": "1d47051f6e648bb0e6cda4c0cce609ae9ef2f8a7a0b79b840f4f53eaa146acdb",
+                "catalog_id": "PORTAINER",
+                "description": "Portainer Manager",
+                "architecture": "arm64",
+                "version": "v1",
+                "type": "pvm",
+                "tags": [
+                    "latest"
+                ],
+                "size": 12795601920,
+                "path": "/portainer",
+                "pack_filename": "portainer-arm64-v1.pdpack",
+                "metadata_filename": "portainer-arm64-v1.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-09-30T14:29:52.05438618Z",
+                "updated_at": "2025-09-30T14:29:52.054386641Z",
+                "required_roles": [
+                    "DEVELOPER"
+                ],
+                "last_downloaded_at": "2026-03-12T11:25:59.324953257Z",
+                "last_downloaded_user": "root",
+                "download_count": 59,
+                "pack_contents": [
+                    {
+                        "name": "portainer-arm64-v1.meta",
+                        "path": "/portainer"
+                    },
+                    {
+                        "name": "portainer-arm64-v1.pdpack",
+                        "path": "/portainer"
+                    }
+                ],
+                "pack_size": 12795601920,
+                "minimum_requirements": {
+                    "cpu": 2,
+                    "memory": 2048,
+                    "disk": 90000
+                }
+            }
+        ]
+    },
+    {
+        "EMPTY-VM": [
+            {
+                "name": "empty-vm-arm64-latest",
+                "id": "b1ef22e4a015fc58b4ab2e0082e8f76d7be1cc2d4560bbdb6d2b4cdf1e5a4bbd",
+                "catalog_id": "EMPTY-VM",
+                "description": "Empty VM",
+                "architecture": "arm64",
+                "version": "latest",
+                "type": "pvm",
+                "tags": [
+                    "latest"
+                ],
+                "size": 1811456,
+                "path": "/empty-vm",
+                "pack_filename": "empty-vm-arm64-latest.pdpack",
+                "metadata_filename": "empty-vm-arm64-latest.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-09-30T10:11:19.840108747Z",
+                "updated_at": "2025-09-30T10:11:19.840109609Z",
+                "required_roles": [
+                    "SUPER_USER"
+                ],
+                "last_downloaded_at": "2026-02-19T14:11:03.111614411Z",
+                "last_downloaded_user": "root",
+                "download_count": 37,
+                "pack_contents": [
+                    {
+                        "name": "empty-vm-arm64-latest.meta",
+                        "path": "/empty-vm"
+                    },
+                    {
+                        "name": "empty-vm-arm64-latest.pdpack",
+                        "path": "/empty-vm"
+                    }
+                ],
+                "pack_size": 1811456,
+                "minimum_requirements": {
+                    "cpu": 4,
+                    "memory": 2048,
+                    "disk": 90000
+                }
+            }
+        ]
+    },
+    {
+        "TIPI": [
+            {
+                "name": "tipi-arm64-latest",
+                "id": "9060ca7b8edac60fbdf38104bab3f38825b7738905ade1f6a89c4fbe7542fcba",
+                "catalog_id": "TIPI",
+                "description": "Tipi Manager",
+                "architecture": "arm64",
+                "version": "latest",
+                "type": "pvm",
+                "tags": [
+                    "latest"
+                ],
+                "size": 11136896512,
+                "path": "/tipi",
+                "pack_filename": "tipi-arm64-latest.pdpack",
+                "metadata_filename": "tipi-arm64-latest.meta",
+                "provider": {
+                    "type": "minio",
+                    "host": "https://devops-catalog.local-build.co",
+                    "user": "root",
+                    "password": "KD****EN",
+                    "meta": {
+                        "access_key": "cj****ao",
+                        "bucket": "pa****og",
+                        "endpoint": "ht****om",
+                        "ignore_cert": "true",
+                        "secret_key": "mi****5!",
+                        "use_ssl": "true"
+                    }
+                },
+                "created_at": "2025-09-30T09:10:36.696256967Z",
+                "updated_at": "2025-09-30T09:10:36.696257338Z",
+                "required_roles": [
+                    "DEVELOPER",
+                    "SUPER_USER"
+                ],
+                "last_downloaded_at": "2026-03-31T11:03:30.153574305Z",
+                "last_downloaded_user": "root",
+                "download_count": 50,
+                "pack_contents": [
+                    {
+                        "name": "tipi-arm64-latest.meta",
+                        "path": "/tipi"
+                    },
+                    {
+                        "name": "tipi-arm64-latest.pdpack",
+                        "path": "/tipi"
+                    }
+                ],
+                "pack_size": 11136896512,
+                "minimum_requirements": {
+                    "cpu": 2,
+                    "memory": 2048,
+                    "disk": 90000
+                }
+            }
+        ]
+    }
+]

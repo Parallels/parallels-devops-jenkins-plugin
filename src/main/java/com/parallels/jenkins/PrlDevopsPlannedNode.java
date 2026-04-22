@@ -1,7 +1,6 @@
 package com.parallels.jenkins;
 
 import com.parallels.jenkins.api.PrlDevopsApiClient;
-import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import hudson.model.Descriptor;
 import hudson.model.Node;
@@ -90,10 +89,9 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
             LOGGER.info("[PrlDevops] Waiting for VM " + vmId + " to become ready"
                     + " (timeout=" + timeout + ", interval=" + pollInterval + ")");
             try {
-                VmStatusResponse status = apiClient.waitForVmReady(vmId, timeout, pollInterval);
-                String ip = status.getIpConfigured();
-                LOGGER.info("[PrlDevops] VM " + vmId + " is ready at IP " + ip);
-                return new PrlDevopsSlave(cloudName, template, vmId, ip);
+                apiClient.waitForVmReady(vmId, template.getVmUser(), timeout, pollInterval);
+                LOGGER.info("[PrlDevops] VM " + vmId + " is running — registering agent.");
+                return new PrlDevopsSlave(cloudName, template, vmId);
             } catch (PrlApiException | Descriptor.FormException | IOException e) {
                 LOGGER.log(Level.WARNING,
                         "[PrlDevops] VM " + vmId + " failed to become ready; cleaning up. " + e.getMessage(), e);

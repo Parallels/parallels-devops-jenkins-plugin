@@ -3,7 +3,6 @@ package com.parallels.jenkins;
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
-import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
@@ -21,9 +20,9 @@ import java.io.Serializable;
 import java.util.Collections;
 
 /**
- * Per-VM-type configuration: base image name, labels, SSH credentials, and
- * working directory. One {@code AgentTemplate} maps to one VM type in
- * Parallels DevOps Service.
+ * Per-VM-type configuration. One {@code AgentTemplate} maps to one VM type in
+ * Parallels DevOps Service. Commands are executed via the Parallels DevOps
+ * execute API — no SSH connection is required.
  */
 public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implements Serializable {
 
@@ -31,8 +30,8 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
 
     private final String templateLabel;
     private final String baseVmName;
-    private final String sshCredentialsId;
-    private final String remoteFs;
+    /** OS user account used to run commands on the VM via the execute API. */
+    private String vmUser = "parallels";
     private int numExecutors = 1;
     private int vmReadyTimeoutSeconds = 300;
     private int vmReadyPollIntervalSeconds = 10;
@@ -46,17 +45,14 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     private String catalogCredentialsId;
 
     @DataBoundConstructor
-    public AgentTemplate(String templateLabel, String baseVmName, String sshCredentialsId, String remoteFs) {
+    public AgentTemplate(String templateLabel, String baseVmName) {
         this.templateLabel = templateLabel;
         this.baseVmName = baseVmName;
-        this.sshCredentialsId = sshCredentialsId;
-        this.remoteFs = remoteFs;
     }
 
     public String getTemplateLabel() { return templateLabel; }
     public String getBaseVmName() { return baseVmName; }
-    public String getSshCredentialsId() { return sshCredentialsId; }
-    public String getRemoteFs() { return remoteFs; }
+    public String getVmUser() { return vmUser; }
     public int getNumExecutors() { return numExecutors; }
     public int getVmReadyTimeoutSeconds() { return vmReadyTimeoutSeconds; }
     public int getVmReadyPollIntervalSeconds() { return vmReadyPollIntervalSeconds; }
@@ -66,6 +62,11 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     public String getCatalogVersion() { return catalogVersion; }
     public String getCatalogUrl() { return catalogUrl; }
     public String getCatalogCredentialsId() { return catalogCredentialsId; }
+
+    @DataBoundSetter
+    public void setVmUser(String vmUser) {
+        this.vmUser = (vmUser != null && !vmUser.isBlank()) ? vmUser : "parallels";
+    }
 
     @DataBoundSetter
     public void setNumExecutors(int numExecutors) {
@@ -122,24 +123,6 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
         @Override
         public String getDisplayName() {
             return "VM Template";
-        }
-
-        @POST
-        public ListBoxModel doFillSshCredentialsIdItems(@QueryParameter String sshCredentialsId) {
-            Jenkins jenkins = Jenkins.get();
-            if (!jenkins.hasPermission(Jenkins.ADMINISTER)) {
-                return new StandardListBoxModel().includeCurrentValue(sshCredentialsId);
-            }
-            return new StandardListBoxModel()
-                    .includeEmptyValue()
-                    .includeMatchingAs(
-                            ACL.SYSTEM,
-                            jenkins,
-                            StandardUsernameCredentials.class,
-                            Collections.emptyList(),
-                            CredentialsMatchers.always()
-                    )
-                    .includeCurrentValue(sshCredentialsId);
         }
 
         @POST

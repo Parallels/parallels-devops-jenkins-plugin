@@ -4,6 +4,8 @@ import com.parallels.jenkins.api.dto.CloneRequest;
 import com.parallels.jenkins.api.dto.CloneResponse;
 import com.parallels.jenkins.api.dto.CreateVmRequest;
 import com.parallels.jenkins.api.dto.CreateVmResponse;
+import com.parallels.jenkins.api.dto.ExecuteRequest;
+import com.parallels.jenkins.api.dto.ExecuteResponse;
 import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import com.parallels.jenkins.api.exception.PrlApiTimeoutException;
@@ -118,6 +120,23 @@ public interface PrlDevopsApiClient {
      * @throws PrlApiException        if the VM enters an error state or a network error occurs.
      * @throws PrlApiTimeoutException if the VM does not reach running within {@code timeout}.
      */
-    VmStatusResponse waitForVmReady(String vmId, Duration timeout, Duration interval)
+    /**
+     * @param vmUser OS user used for the execute-API readiness probe.
+     */
+    VmStatusResponse waitForVmReady(String vmId, String vmUser, Duration timeout, Duration interval)
             throws PrlApiException, PrlApiTimeoutException;
+
+    /**
+     * Executes a command on a running VM.
+     *
+     * <p>Maps to {@code PUT /api/v1/machines/{vmId}/execute} (host mode) or
+     * {@code PUT /api/v1/orchestrator/hosts/{hostId}/machines/{vmId}/execute}
+     * (orchestrator mode).
+     *
+     * @param vmId    ID of the VM to run the command on.
+     * @param request Command, user, and environment variables.
+     * @return {@link ExecuteResponse} with stdout and exit code.
+     * @throws PrlApiException on HTTP error or network failure.
+     */
+    ExecuteResponse executeCommand(String vmId, ExecuteRequest request) throws PrlApiException;
 }

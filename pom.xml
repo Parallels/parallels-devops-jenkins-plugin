@@ -107,4 +107,17 @@
         </pluginRepository>
     </pluginRepositories>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jenkins-ci.tools</groupId>
+                <artifactId>maven-hpi-plugin</artifactId>
+                <configuration>
+                    <!-- Bind to all interfaces so VMs on the LAN can reach Jenkins during dev -->
+                    <host>0.0.0.0</host>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
