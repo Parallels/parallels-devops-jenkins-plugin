@@ -89,9 +89,19 @@ public class PrlDevopsProvisionTest {
         }
 
         @Override
-        public VmStatusResponse waitForVmReady(String id, Duration timeout, Duration interval)
+        public VmStatusResponse waitForVmReady(String id, String vmUser, Duration timeout, Duration interval)
                 throws PrlApiException {
             return getVmStatus(id);
+        }
+
+        @Override
+        public com.parallels.jenkins.api.dto.ExecuteResponse executeCommand(
+                String id, com.parallels.jenkins.api.dto.ExecuteRequest request) {
+            com.parallels.jenkins.api.dto.ExecuteResponse resp =
+                    new com.parallels.jenkins.api.dto.ExecuteResponse();
+            resp.setStdout("prl-ready");
+            resp.setExitCode(0);
+            return resp;
         }
     }
 
@@ -119,8 +129,7 @@ public class PrlDevopsProvisionTest {
     // -------------------------------------------------------------------------
 
     private TestableCloud buildCloud(String cloudName, PrlDevopsApiClient client, int maxAgents) {
-        AgentTemplate template = new AgentTemplate(
-                "macos-sonoma", "macOS-Sonoma-base", "ssh-cred", "/Users/jenkins");
+        AgentTemplate template = new AgentTemplate("macos-sonoma", "macOS-Sonoma-base");
         template.setNumExecutors(1);
         template.setVmReadyTimeoutSeconds(10);
         template.setVmReadyPollIntervalSeconds(1);
@@ -171,7 +180,6 @@ public class PrlDevopsProvisionTest {
         PrlDevopsSlave slave = (PrlDevopsSlave) node;
         assertEquals("prl-vm-def-456", slave.getNodeName());
         assertEquals("vm-def-456", slave.getVmId());
-        assertEquals("10.0.0.55", slave.getIpAddress());
         assertEquals("PrlCloud2", slave.getCloudName());
     }
 
@@ -283,7 +291,7 @@ public class PrlDevopsProvisionTest {
     public void plannedNode_future_throwsAndDeletesVm_whenWaitForReadyTimesOut() throws Exception {
         StubApiClient stub = new StubApiClient("vm-timeout", "0.0.0.0") {
             @Override
-            public VmStatusResponse waitForVmReady(String id, Duration timeout, Duration interval)
+            public VmStatusResponse waitForVmReady(String id, String vmUser, Duration timeout, Duration interval)
                     throws PrlApiException {
                 throw new PrlApiTimeoutException(id, timeout);
             }

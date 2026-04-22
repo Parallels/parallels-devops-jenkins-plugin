@@ -294,17 +294,22 @@ class PrlDevopsHttpClientTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
                 .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"10.211.55.3\"}"));
+        // execute probe
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"stdout\":\"prl-ready\",\"exit_code\":0}"));
 
-        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, Duration.ofSeconds(5), Duration.ofMillis(50));
+        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, "parallels", Duration.ofSeconds(5), Duration.ofMillis(50));
 
         assertEquals("running", result.getStatus());
         assertEquals("10.211.55.3", result.getIpConfigured());
-        assertEquals(1, server.getRequestCount());
+        assertEquals(2, server.getRequestCount());
     }
 
     @Test
     void waitForVmReady_pollsUntilRunning() throws Exception {
-        // pending → starting → running (no IP yet) → running (with IP)
+        // pending → starting → running: should return on first successful execute probe
         server.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
@@ -316,35 +321,56 @@ class PrlDevopsHttpClientTest {
         server.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
-                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"-\"}"));
+                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"10.211.55.3\"}"));
+        // execute probe
         server.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
-                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"10.211.55.3\"}"));
+                .setBody("{\"stdout\":\"prl-ready\",\"exit_code\":0}"));
 
-        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, Duration.ofSeconds(10), Duration.ofMillis(50));
+        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, "parallels", Duration.ofSeconds(10), Duration.ofMillis(50));
 
         assertEquals("running", result.getStatus());
-        assertEquals("10.211.55.3", result.getIpConfigured());
         assertEquals(4, server.getRequestCount());
     }
 
     @Test
-    void waitForVmReady_runningButNoIp_keepsPolling() throws Exception {
-        // VM reports running with ip_configured="-" on first poll, then real IP
+    void waitForVmReady_executeProbe_retriesUntilSuccess() throws Exception {
+        // running but execute probe fails once before succeeding
         server.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
                 .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"-\"}"));
+        // first execute probe: guest agent not ready yet (500)
+        server.enqueue(new MockResponse().setResponseCode(500).setBody("{}"));
+        // second execute probe: success
         server.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
-                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"10.211.55.3\"}"));
+                .setBody("{\"stdout\":\"prl-ready\",\"exit_code\":0}"));
 
-        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, Duration.ofSeconds(5), Duration.ofMillis(50));
+        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, "parallels", Duration.ofSeconds(5), Duration.ofMillis(50));
 
         assertEquals("running", result.getStatus());
-        assertEquals("10.211.55.3", result.getIpConfigured());
+        assertEquals(3, server.getRequestCount());
+    }
+
+    @Test
+    void waitForVmReady_runningWithNoIp_returnsImmediately() throws Exception {
+        // running without IP should still return immediately — IP is no longer required
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"\"}"));
+        // execute probe
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"stdout\":\"prl-ready\",\"exit_code\":0}"));
+
+        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, "parallels", Duration.ofSeconds(5), Duration.ofMillis(50));
+
+        assertEquals("running", result.getStatus());
         assertEquals(2, server.getRequestCount());
     }
 
@@ -358,11 +384,16 @@ class PrlDevopsHttpClientTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
                 .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"10.211.55.3\"}"));
+        // execute probe
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"stdout\":\"prl-ready\",\"exit_code\":0}"));
 
-        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, Duration.ofSeconds(5), Duration.ofMillis(50));
+        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, "parallels", Duration.ofSeconds(5), Duration.ofMillis(50));
 
         assertEquals("running", result.getStatus());
-        assertEquals(2, server.getRequestCount());
+        assertEquals(3, server.getRequestCount());
     }
 
     @Test
@@ -373,7 +404,7 @@ class PrlDevopsHttpClientTest {
                 .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"error\"}"));
 
         assertThrows(PrlApiException.class,
-                () -> hostClient.waitForVmReady(VM_ID, Duration.ofSeconds(5), Duration.ofMillis(50)));
+                () -> hostClient.waitForVmReady(VM_ID, "parallels", Duration.ofSeconds(5), Duration.ofMillis(50)));
     }
 
     @Test
@@ -387,7 +418,7 @@ class PrlDevopsHttpClientTest {
         }
 
         PrlApiTimeoutException ex = assertThrows(PrlApiTimeoutException.class,
-                () -> hostClient.waitForVmReady(VM_ID, Duration.ofMillis(200), Duration.ofMillis(50)));
+                () -> hostClient.waitForVmReady(VM_ID, "parallels", Duration.ofMillis(200), Duration.ofMillis(50)));
 
         assertEquals(VM_ID, ex.getVmId());
     }
@@ -398,8 +429,13 @@ class PrlDevopsHttpClientTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
                 .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"Running\",\"ip_configured\":\"10.211.55.3\"}"));
+        // execute probe
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"stdout\":\"prl-ready\",\"exit_code\":0}"));
 
-        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, Duration.ofSeconds(5), Duration.ofMillis(50));
+        VmStatusResponse result = hostClient.waitForVmReady(VM_ID, "parallels", Duration.ofSeconds(5), Duration.ofMillis(50));
 
         assertEquals("Running", result.getStatus());
     }

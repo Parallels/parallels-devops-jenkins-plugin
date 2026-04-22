@@ -90,10 +90,15 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
             LOGGER.info("[PrlDevops] Waiting for VM " + vmId + " to become ready"
                     + " (timeout=" + timeout + ", interval=" + pollInterval + ")");
             try {
-                VmStatusResponse status = apiClient.waitForVmReady(vmId, timeout, pollInterval);
-                String ip = status.getIpConfigured();
-                LOGGER.info("[PrlDevops] VM " + vmId + " is ready at IP " + ip);
-                return new PrlDevopsSlave(cloudName, template, vmId, ip);
+                VmStatusResponse status = apiClient.waitForVmReady(vmId, template.getVmUser(), timeout, pollInterval);
+                String vmIp = status.getIpConfigured();
+                if (vmIp == null || vmIp.isBlank() || vmIp.equals("-")) {
+                    throw new PrlApiException(
+                            "VM " + vmId + " is running but ip_configured is '" + vmIp
+                            + "' — cannot SSH. Check that Parallels Tools are installed in the VM.");
+                }
+                LOGGER.info("[PrlDevops] VM " + vmId + " is running at " + vmIp + " — registering agent.");
+                return new PrlDevopsSlave(cloudName, template, vmId, vmIp);
             } catch (PrlApiException | Descriptor.FormException | IOException e) {
                 LOGGER.log(Level.WARNING,
                         "[PrlDevops] VM " + vmId + " failed to become ready; cleaning up. " + e.getMessage(), e);

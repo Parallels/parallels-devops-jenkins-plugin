@@ -436,7 +436,7 @@ public class PrlDevopsCloud extends Cloud {
                     switch (state) {
                         case "running":
                             if (computer.isConnecting()) {
-                                // SSH launcher is actively retrying.
+                                // Launcher is actively retrying.
                                 // Allow up to 2× the VM-ready timeout; after that the node
                                 // is either a stale leftover from a previous session or the
                                 // VM is genuinely unreachable — clean it up.
@@ -455,15 +455,24 @@ public class PrlDevopsCloud extends Cloud {
                                 }
                                 // else: within grace period — leave it alone
                             } else {
-                                // VM is running but there is no active SSH connection.
-                                // This means the connection died after a build completed
-                                // (RetentionStrategy.NOOP leaves nodes offline after disconnect).
-                                // Delete the VM and remove the node so Jenkins re-provisions
-                                // a fresh clone and releases any pending builds.
+                                // Not actively connecting. Check if the node was recently
+                                // launched — the JNLP agent may still be starting up and
+                                // hasn't established its WebSocket connection yet.
+                                long ageSeconds =
+                                        (System.currentTimeMillis() - slave.getProvisionedAt()) / 1000L;
+                                long graceSeconds =
+                                        slave.getTemplate().getVmReadyTimeoutSeconds() * 2L;
+                                if (ageSeconds < graceSeconds) {
+                                    // Within grace period — leave it alone.
+                                    break;
+                                }
+                                // Beyond grace period AND offline AND not connecting →
+                                // the agent failed to come online; delete the VM.
                                 LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
                                         + " — VM " + slave.getVmId()
-                                        + " is running but node is offline with no active launch."
-                                        + " Deleting VM to free capacity.");
+                                        + " is running but node has been offline for "
+                                        + ageSeconds + "s (grace=" + graceSeconds
+                                        + "s). Deleting VM.");
                                 deleteVmQuietly(client, slave.getVmId());
                                 removeNode(jenkins, slave);
                             }

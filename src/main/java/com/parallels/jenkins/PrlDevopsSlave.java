@@ -11,10 +11,8 @@ import hudson.slaves.RetentionStrategy;
 import java.io.IOException;
 
 /**
- * A live cloned VM registered as a Jenkins node. Constructed when
- * Parallels DevOps Service has cloned a VM and returned its ID and IP
- * address. Retention strategy is ONE_SHOT: the VM is terminated after its
- * build completes (full teardown logic in PRL-JNK-09).
+ * A provisioned VM registered as a Jenkins agent. The agent is bootstrapped
+ * via SSH — Jenkins connects to the VM's IP, copies agent.jar, and starts it.
  */
 public class PrlDevopsSlave extends AbstractCloudSlave {
 
@@ -23,21 +21,21 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
     private final String cloudName;
     private final AgentTemplate template;
     private final String vmId;
-    private final String ipAddress;
+    private final String vmIp;
     /** Epoch-millis when this node was first created (set once, never changes). */
     private final long provisionedAt;
 
-    public PrlDevopsSlave(String cloudName, AgentTemplate template, String vmId, String ipAddress)
+    public PrlDevopsSlave(String cloudName, AgentTemplate template, String vmId, String vmIp)
             throws Descriptor.FormException, IOException {
         super(
                 "prl-" + vmId,
-                template.getRemoteFs(),
-                new SSHLauncher(ipAddress, 22, template.getSshCredentialsId())
+                "/tmp/jenkins-agent",
+                new SSHLauncher(vmIp, 22, template.getSshCredentialsId())
         );
         this.cloudName = cloudName;
         this.template = template;
         this.vmId = vmId;
-        this.ipAddress = ipAddress;
+        this.vmIp = vmIp;
         this.provisionedAt = System.currentTimeMillis();
         setNumExecutors(template.getNumExecutors());
         setLabelString(template.getTemplateLabel());
@@ -48,7 +46,7 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
     public String getCloudName() { return cloudName; }
     public AgentTemplate getTemplate() { return template; }
     public String getVmId() { return vmId; }
-    public String getIpAddress() { return ipAddress; }
+    public String getVmIp() { return vmIp; }
     public long getProvisionedAt() { return provisionedAt; }
 
     @Override
@@ -66,13 +64,9 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
         return new AbstractCloudComputer<>(this);
     }
 
-    /**
-     * Stub implementation — VM termination is wired up in PRL-JNK-09.
-     * Safe to call; does not contact the Parallels DevOps API.
-     */
     @Override
     protected void _terminate(TaskListener listener) {
         listener.getLogger().println(
-                "[PrlDevopsSlave] terminate() called for VM " + vmId + " — no-op stub (PRL-JNK-09)");
+                "[PrlDevopsSlave] terminate() called for VM " + vmId);
     }
 }

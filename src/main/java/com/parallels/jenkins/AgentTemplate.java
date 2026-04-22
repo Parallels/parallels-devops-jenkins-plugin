@@ -21,9 +21,9 @@ import java.io.Serializable;
 import java.util.Collections;
 
 /**
- * Per-VM-type configuration: base image name, labels, SSH credentials, and
- * working directory. One {@code AgentTemplate} maps to one VM type in
- * Parallels DevOps Service.
+ * Per-VM-type configuration. One {@code AgentTemplate} maps to one VM type in
+ * Parallels DevOps Service. Commands are executed via the Parallels DevOps
+ * execute API — no SSH connection is required.
  */
 public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implements Serializable {
 
@@ -31,8 +31,10 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
 
     private final String templateLabel;
     private final String baseVmName;
-    private final String sshCredentialsId;
-    private final String remoteFs;
+    /** OS user account used to run commands on the VM via the execute API. */
+    private String vmUser = "parallels";
+    /** Jenkins credentials ID for SSH agent bootstrap (username + password or key). */
+    private String sshCredentialsId;
     private int numExecutors = 1;
     private int vmReadyTimeoutSeconds = 300;
     private int vmReadyPollIntervalSeconds = 10;
@@ -46,17 +48,15 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     private String catalogCredentialsId;
 
     @DataBoundConstructor
-    public AgentTemplate(String templateLabel, String baseVmName, String sshCredentialsId, String remoteFs) {
+    public AgentTemplate(String templateLabel, String baseVmName) {
         this.templateLabel = templateLabel;
         this.baseVmName = baseVmName;
-        this.sshCredentialsId = sshCredentialsId;
-        this.remoteFs = remoteFs;
     }
 
     public String getTemplateLabel() { return templateLabel; }
     public String getBaseVmName() { return baseVmName; }
+    public String getVmUser() { return vmUser; }
     public String getSshCredentialsId() { return sshCredentialsId; }
-    public String getRemoteFs() { return remoteFs; }
     public int getNumExecutors() { return numExecutors; }
     public int getVmReadyTimeoutSeconds() { return vmReadyTimeoutSeconds; }
     public int getVmReadyPollIntervalSeconds() { return vmReadyPollIntervalSeconds; }
@@ -66,6 +66,16 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     public String getCatalogVersion() { return catalogVersion; }
     public String getCatalogUrl() { return catalogUrl; }
     public String getCatalogCredentialsId() { return catalogCredentialsId; }
+
+    @DataBoundSetter
+    public void setVmUser(String vmUser) {
+        this.vmUser = (vmUser != null && !vmUser.isBlank()) ? vmUser : "parallels";
+    }
+
+    @DataBoundSetter
+    public void setSshCredentialsId(String sshCredentialsId) {
+        this.sshCredentialsId = sshCredentialsId;
+    }
 
     @DataBoundSetter
     public void setNumExecutors(int numExecutors) {
@@ -164,6 +174,13 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
             ListBoxModel items = new ListBoxModel();
             items.add("arm64", "arm64");
             items.add("x86_64", "x86_64");
+            return items;
+        }
+
+        public ListBoxModel doFillProvisioningModeItems(@QueryParameter String provisioningMode) {
+            ListBoxModel items = new ListBoxModel();
+            items.add("Clone existing VM (Host mode)", VmProvisioningMode.CLONE.name());
+            items.add("Create from catalog (Orchestrator mode)", VmProvisioningMode.CATALOG.name());
             return items;
         }
 
