@@ -3,7 +3,6 @@ package com.parallels.jenkins;
 import hudson.model.Descriptor;
 import hudson.model.Node;
 import hudson.model.TaskListener;
-import hudson.plugins.sshslaves.SSHLauncher;
 import hudson.slaves.AbstractCloudComputer;
 import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.RetentionStrategy;
@@ -12,7 +11,8 @@ import java.io.IOException;
 
 /**
  * A provisioned VM registered as a Jenkins agent. The agent is bootstrapped
- * via SSH — Jenkins connects to the VM's IP, copies agent.jar, and starts it.
+ * via SSH using {@link PrlDevopsComputerLauncher}, which delegates to
+ * {@link hudson.plugins.sshslaves.SSHLauncher} with configurable retry logic.
  */
 public class PrlDevopsSlave extends AbstractCloudSlave {
 
@@ -30,7 +30,7 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
         super(
                 "prl-" + vmId,
                 "/tmp/jenkins-agent",
-                new SSHLauncher(vmIp, 22, template.getSshCredentialsId())
+                new PrlDevopsComputerLauncher(vmIp, template)
         );
         this.cloudName = cloudName;
         this.template = template;
