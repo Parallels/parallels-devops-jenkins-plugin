@@ -177,15 +177,19 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
             return items;
         }
 
+        @POST
         public ListBoxModel doFillProvisioningModeItems(@QueryParameter String provisioningMode) {
+            Jenkins.get().checkPermission(Jenkins.ADMINISTER);
             ListBoxModel items = new ListBoxModel();
             items.add("Clone existing VM (Host mode)", VmProvisioningMode.CLONE.name());
             items.add("Create from catalog (Orchestrator mode)", VmProvisioningMode.CATALOG.name());
             return items;
         }
 
+        @POST
         public hudson.util.FormValidation doCheckCatalogId(@QueryParameter String catalogId,
                                                            @QueryParameter String provisioningMode) {
+            Jenkins.get().checkPermission(Jenkins.ADMINISTER);
             if ("CATALOG".equals(provisioningMode)
                     && (catalogId == null || catalogId.isBlank())) {
                 return hudson.util.FormValidation.error("Catalog ID is required");

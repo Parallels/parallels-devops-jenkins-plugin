@@ -79,7 +79,7 @@ public class PrlDevopsBuilder extends Builder {
 
         Map<String, String> envMap = new LinkedHashMap<>();
         for (EnvVar ev : environmentVariables) {
-            envMap.put(ev.getKey(), ev.getValue());
+            envMap.put(ev.getEnvKey(), ev.getEnvValue());
         }
 
         String vmUser = slave.getTemplate().getVmUser();
@@ -108,17 +108,17 @@ public class PrlDevopsBuilder extends Builder {
     // -------------------------------------------------------------------------
 
     public static final class EnvVar {
-        private final String key;
-        private final String value;
+        private final String envKey;
+        private final String envValue;
 
         @DataBoundConstructor
-        public EnvVar(String key, String value) {
-            this.key = key;
-            this.value = value;
+        public EnvVar(String envKey, String envValue) {
+            this.envKey = envKey;
+            this.envValue = envValue;
         }
 
-        public String getKey() { return key; }
-        public String getValue() { return value; }
+        public String getEnvKey() { return envKey; }
+        public String getEnvValue() { return envValue; }
     }
 
     // -------------------------------------------------------------------------
