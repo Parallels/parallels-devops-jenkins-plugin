@@ -35,6 +35,16 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     private String vmUser = "parallels";
     /** Jenkins credentials ID for SSH agent bootstrap (username + password or key). */
     private String sshCredentialsId;
+    /** SSH port on the cloned VM (default 22). */
+    private int sshPort = 22;
+    /** Path to Java on the agent VM (default: {@code java}). */
+    private String javaPath = "java";
+    /** Extra JVM flags passed to the remoting process. */
+    private String jvmOptions = "";
+    /** Maximum SSH connection attempts before marking the node offline (default 5). */
+    private int sshRetries = 5;
+    /** Seconds to wait between SSH retry attempts (default 15). */
+    private int sshRetryDelaySec = 15;
     private int numExecutors = 1;
     private int vmReadyTimeoutSeconds = 300;
     private int vmReadyPollIntervalSeconds = 10;
@@ -57,6 +67,11 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     public String getBaseVmName() { return baseVmName; }
     public String getVmUser() { return vmUser; }
     public String getSshCredentialsId() { return sshCredentialsId; }
+    public int getSshPort() { return sshPort; }
+    public String getJavaPath() { return javaPath; }
+    public String getJvmOptions() { return jvmOptions; }
+    public int getSshRetries() { return sshRetries; }
+    public int getSshRetryDelaySec() { return sshRetryDelaySec; }
     public int getNumExecutors() { return numExecutors; }
     public int getVmReadyTimeoutSeconds() { return vmReadyTimeoutSeconds; }
     public int getVmReadyPollIntervalSeconds() { return vmReadyPollIntervalSeconds; }
@@ -75,6 +90,31 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     @DataBoundSetter
     public void setSshCredentialsId(String sshCredentialsId) {
         this.sshCredentialsId = sshCredentialsId;
+    }
+
+    @DataBoundSetter
+    public void setSshPort(int sshPort) {
+        this.sshPort = sshPort > 0 ? sshPort : 22;
+    }
+
+    @DataBoundSetter
+    public void setJavaPath(String javaPath) {
+        this.javaPath = (javaPath != null && !javaPath.isBlank()) ? javaPath : "java";
+    }
+
+    @DataBoundSetter
+    public void setJvmOptions(String jvmOptions) {
+        this.jvmOptions = jvmOptions != null ? jvmOptions : "";
+    }
+
+    @DataBoundSetter
+    public void setSshRetries(int sshRetries) {
+        this.sshRetries = sshRetries > 0 ? sshRetries : 5;
+    }
+
+    @DataBoundSetter
+    public void setSshRetryDelaySec(int sshRetryDelaySec) {
+        this.sshRetryDelaySec = sshRetryDelaySec > 0 ? sshRetryDelaySec : 15;
     }
 
     @DataBoundSetter
