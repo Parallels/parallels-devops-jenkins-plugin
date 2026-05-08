@@ -336,13 +336,20 @@ class PrlDevopsHttpClientTest {
 
     @Test
     void waitForVmReady_executeProbe_retriesUntilSuccess() throws Exception {
-        // running but execute probe fails once before succeeding
+        // running with valid IP but execute probe fails once before succeeding.
+        // The inner loop re-fetches status after each failed attempt, so we need
+        // 4 responses: status → execute(fail) → status-refetch → execute(success).
         server.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
-                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"-\"}"));
+                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"10.211.55.3\"}"));
         // first execute probe: guest agent not ready yet (500)
         server.enqueue(new MockResponse().setResponseCode(500).setBody("{}"));
+        // status re-fetch inside inner loop
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"10.211.55.3\"}"));
         // second execute probe: success
         server.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -352,16 +359,16 @@ class PrlDevopsHttpClientTest {
         VmStatusResponse result = hostClient.waitForVmReady(VM_ID, "parallels", Duration.ofSeconds(5), Duration.ofMillis(50));
 
         assertEquals("running", result.getStatus());
-        assertEquals(3, server.getRequestCount());
+        assertEquals(4, server.getRequestCount());
     }
 
     @Test
-    void waitForVmReady_runningWithNoIp_returnsImmediately() throws Exception {
-        // running without IP should still return immediately — IP is no longer required
+    void waitForVmReady_runningWithValidIp_returnsAfterExecuteProbe() throws Exception {
+        // running with a valid IP — should proceed to execute probe and return
         server.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
-                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"\"}"));
+                .setBody("{\"id\":\"" + VM_ID + "\",\"status\":\"running\",\"ip_configured\":\"10.211.55.5\"}"));
         // execute probe
         server.enqueue(new MockResponse()
                 .setResponseCode(200)
