@@ -14,6 +14,8 @@ import com.parallels.jenkins.api.dto.CreateVmResponse;
 import com.parallels.jenkins.api.dto.VmStatusResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import hudson.Extension;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.model.AbstractBuild;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.Computer;
@@ -528,6 +530,33 @@ public class PrlDevopsCloud extends Cloud {
      * Without this, Jenkins sees the node as reusable and will not provision
      * a new clone for the next queued build.
      */
+    /**
+     * Scans all {@link PrlDevopsSlave} nodes at startup and terminates any that are
+     * offline — these are orphans left over from a previous Jenkins session where
+     * cleanup did not complete (e.g. unexpected shutdown).
+     */
+    @Initializer(after = InitMilestone.JOB_LOADED)
+    public static void cleanupOrphanedSlaves() {
+        Jenkins jenkins = Jenkins.get();
+        for (Node node : new java.util.ArrayList<>(jenkins.getNodes())) {
+            if (!(node instanceof PrlDevopsSlave)) {
+                continue;
+            }
+            PrlDevopsSlave slave = (PrlDevopsSlave) node;
+            Computer c = slave.toComputer();
+            if (c == null || c.isOffline()) {
+                LOGGER.info("[PrlDevops] Startup cleanup: terminating orphaned slave "
+                        + slave.getNodeName() + " (VM " + slave.getVmId() + ")");
+                slave.terminate();
+            }
+        }
+    }
+
+    /**
+     * Tears down the cloned VM immediately after each build completes by
+     * delegating to {@link PrlDevopsSlave#terminate()}, which handles
+     * idempotency, VM deletion, and node removal atomically.
+     */
     @Extension
     public static final class BuildCompletionListener extends RunListener<Run<?, ?>> {
 
@@ -543,34 +572,9 @@ public class PrlDevopsCloud extends Cloud {
             if (!(node instanceof PrlDevopsSlave)) {
                 return;
             }
-            PrlDevopsSlave slave = (PrlDevopsSlave) node;
-            Jenkins jenkins = Jenkins.get();
-
-            // Force-delete the VM (running or not) using ?force=true
-            Cloud cloud = jenkins.clouds.getByName(slave.getCloudName());
-            if (cloud instanceof PrlDevopsCloud) {
-                try {
-                    PrlDevopsApiClient client = ((PrlDevopsCloud) cloud).buildApiClient();
-                    client.deleteVm(slave.getVmId());
-                    LOG.info("[PrlDevops] Deleted VM " + slave.getVmId()
-                            + " after build " + run.getFullDisplayName());
-                } catch (PrlApiException e) {
-                    LOG.log(Level.WARNING,
-                            "[PrlDevops] Failed to delete VM " + slave.getVmId()
-                                    + " after build completion: " + e.getMessage(), e);
-                }
-            }
-
-            // Remove the node so Jenkins provisions a fresh clone for the next build
-            try {
-                jenkins.removeNode(slave);
-                LOG.info("[PrlDevops] Removed node " + slave.getNodeName()
-                        + " after build " + run.getFullDisplayName());
-            } catch (IOException e) {
-                LOG.log(Level.WARNING,
-                        "[PrlDevops] Failed to remove node " + slave.getNodeName()
-                                + " after build completion: " + e.getMessage(), e);
-            }
+            LOG.info("[PrlDevops] Build " + run.getFullDisplayName()
+                    + " finished — triggering VM termination.");
+            ((PrlDevopsSlave) node).terminate();
         }
     }
 
