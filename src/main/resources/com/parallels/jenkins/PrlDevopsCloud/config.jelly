@@ -10,7 +10,9 @@
         <c:select />
     </f:entry>
     <f:entry title="Connection Mode" field="connectionMode">
-        <f:select />
+        <f:enum>
+            ${it.name()}
+        </f:enum>
     </f:entry>
     <f:entry title="Max Concurrent Agents" field="maxAgents">
         <f:number default="1" min="1" max="50" />

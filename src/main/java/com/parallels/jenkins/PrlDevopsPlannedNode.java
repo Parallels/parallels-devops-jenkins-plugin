@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  * (typically {@code hudson.model.Computer.threadPoolForRemoting}) so that the
  * ready-wait loop never blocks the calling (provisioner) thread.
  *
- * <p>On success the future returns a fully constructed {@link PrlDevopsSlave}.
+ * <p>On success the future returns a fully constructed {@link PrlDevopsAgent}.
  * On timeout or API error the future logs the failure, requests deletion of the
  * orphaned VM, and re-throws so Jenkins cancels the planned node.
  */
@@ -74,10 +74,10 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
                                             ExecutorService executor) {
         Callable<Node> task = () -> {
             if (startOnCreate) {
-                LOGGER.info("[PrlDevops] VM " + vmId
+                LOGGER.fine("[PrlDevops] VM " + vmId
                         + " was created with startOnCreate=true — skipping startVm()");
             } else {
-                LOGGER.info("[PrlDevops] Starting VM " + vmId);
+                LOGGER.fine("[PrlDevops] Starting VM " + vmId);
                 try {
                     apiClient.startVm(vmId);
                 } catch (PrlApiException e) {
@@ -87,7 +87,7 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
                     throw e;
                 }
             }
-            LOGGER.info("[PrlDevops] Waiting for VM " + vmId + " to become ready"
+            LOGGER.fine("[PrlDevops] Waiting for VM " + vmId + " to become ready"
                     + " (timeout=" + timeout + ", interval=" + pollInterval + ")");
             try {
                 VmStatusResponse status = apiClient.waitForVmReady(vmId, template.getVmUser(), timeout, pollInterval);
@@ -97,14 +97,14 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
                             "VM " + vmId + " is running but ip_configured is '" + vmIp
                             + "' — cannot SSH. Check that Parallels Tools are installed in the VM.");
                 }
-                LOGGER.info("[PrlDevops] VM " + vmId + " is running at " + vmIp + " — registering agent.");
-                return new PrlDevopsSlave(cloudName, template, vmId, vmIp);
+                LOGGER.fine("[PrlDevops] VM " + vmId + " is running at " + vmIp + " — registering agent.");
+                return new PrlDevopsAgent(cloudName, template, vmId, vmIp);
             } catch (PrlApiException | Descriptor.FormException | IOException e) {
                 LOGGER.log(Level.WARNING,
                         "[PrlDevops] VM " + vmId + " failed to become ready; cleaning up. " + e.getMessage(), e);
                 try {
                     apiClient.deleteVm(vmId);
-                    LOGGER.info("[PrlDevops] Successfully deleted orphaned VM " + vmId);
+                    LOGGER.fine("[PrlDevops] Successfully deleted orphaned VM " + vmId);
                 } catch (PrlApiException cleanupEx) {
                     LOGGER.log(Level.WARNING,
                             "[PrlDevops] Could not delete orphaned VM " + vmId + ": " + cleanupEx.getMessage(),

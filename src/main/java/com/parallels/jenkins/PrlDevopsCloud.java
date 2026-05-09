@@ -4,6 +4,7 @@ import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import com.parallels.jenkins.api.ConnectionMode;
 import com.parallels.jenkins.api.PrlDevopsApiClient;
 import com.parallels.jenkins.api.PrlDevopsHttpClient;
 import com.parallels.jenkins.api.dto.CatalogManifest;
@@ -57,7 +58,7 @@ public class PrlDevopsCloud extends Cloud {
 
     private String serviceUrl;
     private String credentialsId;
-    private ConnectionMode connectionMode;
+    private com.parallels.jenkins.api.ConnectionMode connectionMode;
     private int maxAgents;
     private List<AgentTemplate> templates = new ArrayList<>();
 
@@ -68,7 +69,7 @@ public class PrlDevopsCloud extends Cloud {
 
     public String getServiceUrl() { return serviceUrl; }
     public String getCredentialsId() { return credentialsId; }
-    public ConnectionMode getConnectionMode() { return connectionMode; }
+    public com.parallels.jenkins.api.ConnectionMode getConnectionMode() { return connectionMode; }
     public int getMaxAgents() { return maxAgents; }
     public List<AgentTemplate> getTemplates() { return Collections.unmodifiableList(templates); }
 
@@ -77,7 +78,7 @@ public class PrlDevopsCloud extends Cloud {
     @DataBoundSetter
     public void setCredentialsId(String credentialsId) { this.credentialsId = credentialsId; }
     @DataBoundSetter
-    public void setConnectionMode(ConnectionMode connectionMode) { this.connectionMode = connectionMode; }
+    public void setConnectionMode(com.parallels.jenkins.api.ConnectionMode connectionMode) { this.connectionMode = connectionMode; }
     @DataBoundSetter
     public void setMaxAgents(int maxAgents) { this.maxAgents = maxAgents; }
     @DataBoundSetter
@@ -127,14 +128,14 @@ public class PrlDevopsCloud extends Cloud {
         //                       session and must NOT consume budget (the reconciler will
         //                       remove them once the VM-status check detects them as gone).
         long activeAgents = Jenkins.get().getNodes().stream()
-                .filter(n -> n instanceof PrlDevopsSlave
-                        && name.equals(((PrlDevopsSlave) n).getCloudName()))
+                .filter(n -> n instanceof PrlDevopsAgent
+                        && name.equals(((PrlDevopsAgent) n).getCloudName()))
                 .filter(n -> {
                     Computer c = n.toComputer();
                     if (c == null) return false;
                     if (c.isOnline()) return true;
                     if (c.isConnecting()) {
-                        PrlDevopsSlave prl = (PrlDevopsSlave) n;
+                        PrlDevopsAgent prl = (PrlDevopsAgent) n;
                         long ageSeconds =
                                 (System.currentTimeMillis() - prl.getProvisionedAt()) / 1000L;
                         long graceSeconds = prl.getTemplate().getVmReadyTimeoutSeconds() * 2L;
@@ -264,9 +265,7 @@ public class PrlDevopsCloud extends Cloud {
         return new PrlDevopsHttpClient.Builder()
                 .baseUrl(serviceUrl)
                 .bearerToken(token)
-                .mode(connectionMode != null
-                        ? com.parallels.jenkins.api.ConnectionMode.valueOf(connectionMode.name())
-                        : com.parallels.jenkins.api.ConnectionMode.HOST)
+                .mode(connectionMode != null ? connectionMode : ConnectionMode.HOST)
                 .build();
     }
 
@@ -373,7 +372,7 @@ public class PrlDevopsCloud extends Cloud {
 
     /**
      * Background worker that runs every 60 seconds and removes any
-     * {@link PrlDevopsSlave} node whose VM has been deleted outside the plugin
+     * {@link PrlDevopsAgent} node whose VM has been deleted outside the plugin
      * (e.g. manually via prl-devops-service UI or API).
      *
      * <p>Only offline nodes are inspected — online nodes are by definition healthy.
@@ -402,11 +401,11 @@ public class PrlDevopsCloud extends Cloud {
         protected void execute(TaskListener listener) {
             Jenkins jenkins = Jenkins.get();
             for (Node node : new ArrayList<>(jenkins.getNodes())) {
-                if (!(node instanceof PrlDevopsSlave)) {
+                if (!(node instanceof PrlDevopsAgent)) {
                     continue;
                 }
-                PrlDevopsSlave slave = (PrlDevopsSlave) node;
-                Computer computer = slave.toComputer();
+                PrlDevopsAgent agent = (PrlDevopsAgent) node;
+                Computer computer = agent.toComputer();
 
                 // Computer not yet initialised — node was just added; skip this cycle.
                 if (computer == null) {
@@ -418,18 +417,18 @@ public class PrlDevopsCloud extends Cloud {
                     continue;
                 }
 
-                Cloud cloud = jenkins.clouds.getByName(slave.getCloudName());
+                Cloud cloud = jenkins.clouds.getByName(agent.getCloudName());
                 if (!(cloud instanceof PrlDevopsCloud)) {
-                    LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
-                            + " — owning cloud '" + slave.getCloudName() + "' no longer exists.");
-                    removeNode(jenkins, slave);
+                    LOG.info("[PrlDevops] Removing node " + agent.getNodeName()
+                            + " — owning cloud '" + agent.getCloudName() + "' no longer exists.");
+                    removeNode(jenkins, agent);
                     continue;
                 }
 
                 PrlDevopsCloud prlCloud = (PrlDevopsCloud) cloud;
                 try {
                     PrlDevopsApiClient client = prlCloud.buildApiClient();
-                    VmStatusResponse status = client.getVmStatus(slave.getVmId());
+                    VmStatusResponse status = client.getVmStatus(agent.getVmId());
                     String state = status.getStatus() != null
                             ? status.getStatus().toLowerCase(Locale.ROOT) : "";
 
@@ -441,17 +440,17 @@ public class PrlDevopsCloud extends Cloud {
                                 // is either a stale leftover from a previous session or the
                                 // VM is genuinely unreachable — clean it up.
                                 long ageSeconds =
-                                        (System.currentTimeMillis() - slave.getProvisionedAt()) / 1000L;
+                                        (System.currentTimeMillis() - agent.getProvisionedAt()) / 1000L;
                                 long graceSeconds =
-                                        slave.getTemplate().getVmReadyTimeoutSeconds() * 2L;
+                                        agent.getTemplate().getVmReadyTimeoutSeconds() * 2L;
                                 if (ageSeconds >= graceSeconds) {
-                                    LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
-                                            + " — VM " + slave.getVmId()
+                                    LOG.info("[PrlDevops] Removing node " + agent.getNodeName()
+                                            + " — VM " + agent.getVmId()
                                             + " is running but has been connecting for "
                                             + ageSeconds + "s (grace=" + graceSeconds
                                             + "s). Deleting stale VM.");
-                                    deleteVmQuietly(client, slave.getVmId());
-                                    removeNode(jenkins, slave);
+                                    deleteVmQuietly(client, agent.getVmId());
+                                    removeNode(jenkins, agent);
                                 }
                                 // else: within grace period — leave it alone
                             } else {
@@ -459,29 +458,29 @@ public class PrlDevopsCloud extends Cloud {
                                 // launched — the JNLP agent may still be starting up and
                                 // hasn't established its WebSocket connection yet.
                                 long ageSeconds =
-                                        (System.currentTimeMillis() - slave.getProvisionedAt()) / 1000L;
+                                        (System.currentTimeMillis() - agent.getProvisionedAt()) / 1000L;
                                 long graceSeconds =
-                                        slave.getTemplate().getVmReadyTimeoutSeconds() * 2L;
+                                        agent.getTemplate().getVmReadyTimeoutSeconds() * 2L;
                                 if (ageSeconds < graceSeconds) {
                                     // Within grace period — leave it alone.
                                     break;
                                 }
                                 // Beyond grace period AND offline AND not connecting →
                                 // the agent failed to come online; delete the VM.
-                                LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
-                                        + " — VM " + slave.getVmId()
+                                LOG.info("[PrlDevops] Removing node " + agent.getNodeName()
+                                        + " — VM " + agent.getVmId()
                                         + " is running but node has been offline for "
                                         + ageSeconds + "s (grace=" + graceSeconds
                                         + "s). Deleting VM.");
-                                deleteVmQuietly(client, slave.getVmId());
-                                removeNode(jenkins, slave);
+                                deleteVmQuietly(client, agent.getVmId());
+                                removeNode(jenkins, agent);
                             }
                             break;
                         case "error":
-                            LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
-                                    + " — VM " + slave.getVmId() + " is in error state.");
-                            deleteVmQuietly(client, slave.getVmId());
-                            removeNode(jenkins, slave);
+                            LOG.info("[PrlDevops] Removing node " + agent.getNodeName()
+                                    + " — VM " + agent.getVmId() + " is in error state.");
+                            deleteVmQuietly(client, agent.getVmId());
+                            removeNode(jenkins, agent);
                             break;
                         default:
                             // stopped / starting / pending — VM is transitioning; leave it.
@@ -489,9 +488,9 @@ public class PrlDevopsCloud extends Cloud {
                     }
                 } catch (PrlApiException e) {
                     // HTTP 404 or network error — VM is gone, remove the stale node.
-                    LOG.info("[PrlDevops] Removing node " + slave.getNodeName()
-                            + " — VM " + slave.getVmId() + " no longer exists: " + e.getMessage());
-                    removeNode(jenkins, slave);
+                    LOG.info("[PrlDevops] Removing node " + agent.getNodeName()
+                            + " — VM " + agent.getVmId() + " no longer exists: " + e.getMessage());
+                    removeNode(jenkins, agent);
                 }
             }
         }
@@ -506,12 +505,12 @@ public class PrlDevopsCloud extends Cloud {
             }
         }
 
-        private static void removeNode(Jenkins jenkins, PrlDevopsSlave slave) {
+        private static void removeNode(Jenkins jenkins, PrlDevopsAgent agent) {
             try {
-                jenkins.removeNode(slave);
+                jenkins.removeNode(agent);
             } catch (IOException e) {
                 LOG.log(Level.WARNING,
-                        "[PrlDevops] Failed to remove stale node " + slave.getNodeName() + ": " + e.getMessage(), e);
+                        "[PrlDevops] Failed to remove stale node " + agent.getNodeName() + ": " + e.getMessage(), e);
             }
         }
     }
@@ -519,7 +518,7 @@ public class PrlDevopsCloud extends Cloud {
     /**
      * Tears down the cloned VM immediately after each build completes.
      *
-     * <p>This makes every {@link PrlDevopsSlave} truly one-shot:
+     * <p>This makes every {@link PrlDevopsAgent} truly one-shot:
      * <ol>
      *   <li>Build finishes (success or failure)
      *   <li>VM is deleted via the Parallels DevOps API
@@ -540,35 +539,35 @@ public class PrlDevopsCloud extends Cloud {
                 return; // Pipeline runs are not handled here
             }
             Node node = ((AbstractBuild<?, ?>) run).getBuiltOn();
-            if (!(node instanceof PrlDevopsSlave)) {
+            if (!(node instanceof PrlDevopsAgent)) {
                 return;
             }
-            PrlDevopsSlave slave = (PrlDevopsSlave) node;
+            PrlDevopsAgent agent = (PrlDevopsAgent) node;
             Jenkins jenkins = Jenkins.get();
 
             // Force-delete the VM (running or not) using ?force=true
-            Cloud cloud = jenkins.clouds.getByName(slave.getCloudName());
+            Cloud cloud = jenkins.clouds.getByName(agent.getCloudName());
             if (cloud instanceof PrlDevopsCloud) {
                 try {
                     PrlDevopsApiClient client = ((PrlDevopsCloud) cloud).buildApiClient();
-                    client.deleteVm(slave.getVmId());
-                    LOG.info("[PrlDevops] Deleted VM " + slave.getVmId()
+                    client.deleteVm(agent.getVmId());
+                    LOG.info("[PrlDevops] Deleted VM " + agent.getVmId()
                             + " after build " + run.getFullDisplayName());
                 } catch (PrlApiException e) {
                     LOG.log(Level.WARNING,
-                            "[PrlDevops] Failed to delete VM " + slave.getVmId()
+                            "[PrlDevops] Failed to delete VM " + agent.getVmId()
                                     + " after build completion: " + e.getMessage(), e);
                 }
             }
 
             // Remove the node so Jenkins provisions a fresh clone for the next build
             try {
-                jenkins.removeNode(slave);
-                LOG.info("[PrlDevops] Removed node " + slave.getNodeName()
+                jenkins.removeNode(agent);
+                LOG.info("[PrlDevops] Removed node " + agent.getNodeName()
                         + " after build " + run.getFullDisplayName());
             } catch (IOException e) {
                 LOG.log(Level.WARNING,
-                        "[PrlDevops] Failed to remove node " + slave.getNodeName()
+                        "[PrlDevops] Failed to remove node " + agent.getNodeName()
                                 + " after build completion: " + e.getMessage(), e);
             }
         }
@@ -579,16 +578,6 @@ public class PrlDevopsCloud extends Cloud {
         @Override
         public String getDisplayName() {
             return "Parallels Devops Cloud";
-        }
-
-        @POST
-        public ListBoxModel doFillConnectionModeItems() {
-            Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-            ListBoxModel model = new ListBoxModel();
-            for (ConnectionMode mode : ConnectionMode.values()) {
-                model.add(mode.name(), mode.name());
-            }
-            return model;
         }
 
         @POST

@@ -5,14 +5,20 @@ import com.parallels.jenkins.api.dto.ExecuteRequest;
 import com.parallels.jenkins.api.dto.ExecuteResponse;
 import com.parallels.jenkins.api.exception.PrlApiException;
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
+import hudson.model.Computer;
 import hudson.model.Node;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import jenkins.model.Jenkins;
+import jenkins.tasks.SimpleBuildStep;
+import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 
@@ -27,11 +33,12 @@ import java.util.Map;
  * A Jenkins Build Step that executes a shell command on the provisioned
  * Parallels DevOps VM via {@code PUT /api/v1/machines/{id}/execute}.
  *
- * <p>Add it to a job via <strong>Build Steps → Execute on Parallels VM</strong>.
+ * <p>Add it to a freestyle job via <strong>Build Steps → Execute on Parallels VM</strong>,
+ * or use {@code parallelsDevopsCommand} in a pipeline script.
  *
  * <p>The build fails if the command exits with a non-zero exit code.
  */
-public class PrlDevopsBuilder extends Builder {
+public class PrlDevopsBuilder extends Builder implements SimpleBuildStep {
 
     private final String command;
     private List<EnvVar> environmentVariables = Collections.emptyList();
@@ -51,30 +58,32 @@ public class PrlDevopsBuilder extends Builder {
     }
 
     @Override
-    public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+    public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener)
             throws IOException {
         PrintStream log = listener.getLogger();
 
-        Node node = build.getBuiltOn();
-        if (!(node instanceof PrlDevopsSlave)) {
+        Computer computer = workspace.toComputer();
+        Node node = computer != null ? computer.getNode() : null;
+
+        if (!(node instanceof PrlDevopsAgent agent)) {
             log.println("[PrlDevops] ERROR: This build step requires a Parallels DevOps agent."
                     + " Current node: " + (node != null ? node.getNodeName() : "null"));
-            return false;
+            throw new hudson.AbortException(
+                    "This build step requires a Parallels DevOps agent.");
         }
-        PrlDevopsSlave slave = (PrlDevopsSlave) node;
 
-        hudson.slaves.Cloud cloud = Jenkins.get().clouds.getByName(slave.getCloudName());
-        if (!(cloud instanceof PrlDevopsCloud)) {
-            log.println("[PrlDevops] ERROR: Cloud '" + slave.getCloudName() + "' not found.");
-            return false;
+        if (!(Jenkins.get().clouds.getByName(agent.getCloudName()) instanceof PrlDevopsCloud cloud)) {
+            log.println("[PrlDevops] ERROR: Cloud '" + agent.getCloudName() + "' not found.");
+            throw new hudson.AbortException(
+                    "Cloud '" + agent.getCloudName() + "' not found.");
         }
 
         PrlDevopsApiClient client;
         try {
-            client = ((PrlDevopsCloud) cloud).buildApiClient();
+            client = cloud.buildApiClient();
         } catch (PrlApiException e) {
             log.println("[PrlDevops] ERROR: Cannot build API client: " + e.getMessage());
-            return false;
+            throw new IOException("Cannot build API client: " + e.getMessage(), e);
         }
 
         Map<String, String> envMap = new LinkedHashMap<>();
@@ -82,24 +91,24 @@ public class PrlDevopsBuilder extends Builder {
             envMap.put(ev.getEnvKey(), ev.getEnvValue());
         }
 
-        String vmUser = slave.getTemplate().getVmUser();
-        log.println("[PrlDevops] Executing on VM " + slave.getVmId()
+        String vmUser = agent.getTemplate().getVmUser();
+        log.println("[PrlDevops] Executing on VM " + agent.getVmId()
                 + " as user '" + vmUser + "': " + command);
 
         ExecuteRequest request = new ExecuteRequest(command, vmUser, envMap);
         try {
-            ExecuteResponse response = client.executeCommand(slave.getVmId(), request);
+            ExecuteResponse response = client.executeCommand(agent.getVmId(), request);
             if (response.getStdout() != null && !response.getStdout().isBlank()) {
                 log.println(response.getStdout());
             }
             if (response.getExitCode() != 0) {
                 log.println("[PrlDevops] Command exited with code " + response.getExitCode());
-                return false;
+                throw new hudson.AbortException(
+                        "Command exited with code " + response.getExitCode());
             }
-            return true;
         } catch (PrlApiException e) {
             log.println("[PrlDevops] ERROR executing command: " + e.getMessage());
-            return false;
+            throw new IOException("Error executing command: " + e.getMessage(), e);
         }
     }
 
@@ -108,6 +117,11 @@ public class PrlDevopsBuilder extends Builder {
     // -------------------------------------------------------------------------
 
     public static final class EnvVar {
+        /**
+         * The environment variable name (key). Not a password — suppressing
+         * the plaintext-storage finding which is a false positive here.
+         */
+        @SuppressWarnings("lgtm[jenkins/plaintext-storage]")
         private final String envKey;
         private final String envValue;
 
@@ -126,6 +140,7 @@ public class PrlDevopsBuilder extends Builder {
     // -------------------------------------------------------------------------
 
     @Extension
+    @Symbol("parallelsDevopsCommand")
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
 
         @Override

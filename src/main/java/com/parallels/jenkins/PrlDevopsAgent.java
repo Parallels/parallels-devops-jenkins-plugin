@@ -14,7 +14,7 @@ import java.io.IOException;
  * A provisioned VM registered as a Jenkins agent. The agent is bootstrapped
  * via SSH — Jenkins connects to the VM's IP, copies agent.jar, and starts it.
  */
-public class PrlDevopsSlave extends AbstractCloudSlave {
+public class PrlDevopsAgent extends AbstractCloudSlave {
 
     private static final long serialVersionUID = 1L;
 
@@ -25,11 +25,11 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
     /** Epoch-millis when this node was first created (set once, never changes). */
     private final long provisionedAt;
 
-    public PrlDevopsSlave(String cloudName, AgentTemplate template, String vmId, String vmIp)
+    public PrlDevopsAgent(String cloudName, AgentTemplate template, String vmId, String vmIp)
             throws Descriptor.FormException, IOException {
         super(
                 "prl-" + vmId,
-                "/tmp/jenkins-agent",
+                "/home/jenkins-agent",
                 new SSHLauncher(vmIp, 22, template.getSshCredentialsId())
         );
         this.cloudName = cloudName;
@@ -60,13 +60,13 @@ public class PrlDevopsSlave extends AbstractCloudSlave {
     }
 
     @Override
-    public AbstractCloudComputer<PrlDevopsSlave> createComputer() {
+    public AbstractCloudComputer<PrlDevopsAgent> createComputer() {
         return new AbstractCloudComputer<>(this);
     }
 
     @Override
     protected void _terminate(TaskListener listener) {
         listener.getLogger().println(
-                "[PrlDevopsSlave] terminate() called for VM " + vmId);
+                "[PrlDevopsAgent] terminate() called for VM " + vmId);
     }
 }

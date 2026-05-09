@@ -1,30 +1,36 @@
-# Parallels Devops Jenkins Plugin
+# Parallels DevOps Jenkins Plugin
 
 [![CI](https://github.com/Parallels/parallels-devops-jenkins-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/Parallels/parallels-devops-jenkins-plugin/actions/workflows/ci.yml)
 [![Release](https://github.com/Parallels/parallels-devops-jenkins-plugin/actions/workflows/release.yml/badge.svg)](https://github.com/Parallels/parallels-devops-jenkins-plugin/actions/workflows/release.yml)
 
-This plugin integrates Jenkins with Parallels Devops Service (via the Parallels DevOps Service engine), allowing Jenkins to dynamically provision, manage, and destroy macOS, Windows, or Linux virtual machines as temporary build agents on demand.
+This plugin integrates Jenkins with [Parallels DevOps Service](https://www.parallels.com/products/devops/), allowing Jenkins to dynamically provision, manage, and destroy macOS, Windows, or Linux virtual machines as temporary build agents on demand.
 
 ## Features
+
 - **Dynamic Node Provisioning:** Automatically requests cloned VMs from the prl-devops-service when the Jenkins queue is full.
-- **Orchestrator Mode Support:** Integrates with the Parallels Catalog service to cache golden images and balance resources across a farm of Parallels Devops VM hosts.
-- **Auto Cleanup:** Automatically destroys the VMs using Jenkins Retention Strategies when the job finishes.
+- **Orchestrator Mode Support:** Integrates with the Parallels Catalog service to cache golden images and balance resources across a farm of Parallels DevOps VM hosts.
+- **Auto Cleanup:** Automatically destroys the VMs after each build completes.
+- **Pipeline Support:** Use the `parallelsDevopsCommand` step directly in your Jenkinsfile.
 
-## Developer Documentation
-See the `docs/` folder for architectural analysis.
+## Usage
 
-### Initial Setup & Build Instructions
-Before you begin, ensure you have correctly configured your machine dependencies by following our officially documented [Initial Setup Guide](docs/setup-guide.md).
+### Cloud Configuration
 
-**We have explicitly written a `Makefile` to automatically streamline compilation processes for you.**
+1. Navigate to **Manage Jenkins → Clouds → New Cloud** and select **Parallels DevOps Cloud**.
+2. Enter your **Service URL** and **API Credentials** (Secret text bearer token, or Username+Password).
+3. Choose the **Connection Mode**: `HOST` for a single Parallels Desktop host, or `ORCHESTRATOR` for a federated multi-host setup.
+4. Add one or more **VM Templates**, each with a label, SSH credentials, and a provisioning config:
+   - **Clone existing VM** — clone a named VM registered in the host.
+   - **Create from catalog** — pull a golden image from the Parallels DevOps catalog.
 
-**To securely compile and verify the codebase:**
-```bash
-make build
+### Pipeline Usage
+
+```groovy
+node('macos-sonoma') {
+    parallelsDevopsCommand command: 'sw_vers'
+}
 ```
 
-**To boot the local Jenkins development server:**
-```bash
-make run
-```
-*(Jenkins will automatically spin up and listen at `http://localhost:8080/jenkins`)*
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, Makefile targets, and contribution guidelines.
