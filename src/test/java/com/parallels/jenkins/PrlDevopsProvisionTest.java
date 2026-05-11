@@ -12,9 +12,9 @@ import hudson.model.Label;
 import hudson.model.Node;
 import hudson.slaves.Cloud;
 import hudson.slaves.NodeProvisioner;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -22,7 +22,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * JenkinsRule-based tests for {@link PrlDevopsCloud#provision} and
@@ -32,10 +32,8 @@ import static org.junit.Assert.*;
  * {@link TestableCloud} subclass that overrides {@link PrlDevopsCloud#buildApiClient()},
  * so no live Parallels DevOps server is required.
  */
-public class PrlDevopsProvisionTest {
-
-    @Rule
-    public JenkinsRule r = new JenkinsRule();
+@WithJenkins
+class PrlDevopsProvisionTest {
 
     // -------------------------------------------------------------------------
     // Stub API client
@@ -129,7 +127,8 @@ public class PrlDevopsProvisionTest {
     // -------------------------------------------------------------------------
 
     private TestableCloud buildCloud(String cloudName, PrlDevopsApiClient client, int maxAgents) {
-        AgentTemplate template = new AgentTemplate("macos-sonoma", "macOS-Sonoma-base");
+        AgentTemplate template = new AgentTemplate("macos-sonoma");
+        template.setProvisioningConfig(new CloneProvisioningConfig("macOS-Sonoma-base"));
         template.setNumExecutors(1);
         template.setVmReadyTimeoutSeconds(10);
         template.setVmReadyPollIntervalSeconds(1);
@@ -150,7 +149,7 @@ public class PrlDevopsProvisionTest {
     // -------------------------------------------------------------------------
 
     @Test
-    public void provision_returnsOneNode_forMatchingLabelAndExcessWorkloadOne() throws Exception {
+    void provision_returnsOneNode_forMatchingLabelAndExcessWorkloadOne(JenkinsRule r) throws Exception {
         StubApiClient stub = new StubApiClient("vm-abc-123", "192.168.1.42");
         TestableCloud cloud = buildCloud("PrlCloud", stub, 5);
 
@@ -164,7 +163,7 @@ public class PrlDevopsProvisionTest {
     }
 
     @Test
-    public void plannedNode_future_resolvesToPrlDevopsSlave() throws Exception {
+    void plannedNode_future_resolvesToPrlDevopsAgent(JenkinsRule r) throws Exception {
         StubApiClient stub = new StubApiClient("vm-def-456", "10.0.0.55");
         TestableCloud cloud = buildCloud("PrlCloud2", stub, 5);
 
@@ -175,16 +174,17 @@ public class PrlDevopsProvisionTest {
         Node node = planned.future.get(); // blocks until async future completes
 
         assertNotNull(node);
-        assertTrue("Expected PrlDevopsSlave, got: " + node.getClass(), node instanceof PrlDevopsSlave);
+        assertInstanceOf(PrlDevopsAgent.class, node,
+                "Expected PrlDevopsAgent, got: " + node.getClass());
 
-        PrlDevopsSlave slave = (PrlDevopsSlave) node;
-        assertEquals("prl-vm-def-456", slave.getNodeName());
-        assertEquals("vm-def-456", slave.getVmId());
-        assertEquals("PrlCloud2", slave.getCloudName());
+        PrlDevopsAgent agent = (PrlDevopsAgent) node;
+        assertEquals("prl-vm-def-456", agent.getNodeName());
+        assertEquals("vm-def-456", agent.getVmId());
+        assertEquals("PrlCloud2", agent.getCloudName());
     }
 
     @Test
-    public void provision_returnsMultipleNodes_whenExcessWorkloadIsGreaterThanOne() throws Exception {
+    void provision_returnsMultipleNodes_whenExcessWorkloadIsGreaterThanOne(JenkinsRule r) throws Exception {
         // Each cloneVm call must return a unique VM ID; our stub always returns the same ID.
         // Override cloneVm to generate distinct IDs per call.
         StubApiClient stub = new StubApiClient("vm-multi", "10.1.2.3") {
@@ -224,7 +224,7 @@ public class PrlDevopsProvisionTest {
      * maxAgents=0 is the default (unset) value and means unlimited provisioning.
      */
     @Test
-    public void provision_treatsMaxAgentsZeroAsUnlimited() {
+    void provision_treatsMaxAgentsZeroAsUnlimited(JenkinsRule r) {
         StubApiClient stub = new StubApiClient("vm-unlim", "1.2.3.4") {
             private int counter = 0;
 
@@ -246,7 +246,7 @@ public class PrlDevopsProvisionTest {
     }
 
     @Test
-    public void provision_capsToMaxAgents_whenBudgetIsLessThanExcessWorkload() {
+    void provision_capsToMaxAgents_whenBudgetIsLessThanExcessWorkload(JenkinsRule r) {
         StubApiClient stub = new StubApiClient("vm-ltd", "1.2.3.5") {
             private int counter = 0;
 
@@ -273,7 +273,7 @@ public class PrlDevopsProvisionTest {
     // -------------------------------------------------------------------------
 
     @Test
-    public void provision_returnsEmpty_forNonMatchingLabel() {
+    void provision_returnsEmpty_forNonMatchingLabel(JenkinsRule r) {
         StubApiClient stub = new StubApiClient("vm-no", "0.0.0.0");
         TestableCloud cloud = buildCloud("PrlNoMatch", stub, 5);
 
@@ -288,7 +288,7 @@ public class PrlDevopsProvisionTest {
     // -------------------------------------------------------------------------
 
     @Test
-    public void plannedNode_future_throwsAndDeletesVm_whenWaitForReadyTimesOut() throws Exception {
+    void plannedNode_future_throwsAndDeletesVm_whenWaitForReadyTimesOut(JenkinsRule r) throws Exception {
         StubApiClient stub = new StubApiClient("vm-timeout", "0.0.0.0") {
             @Override
             public VmStatusResponse waitForVmReady(String id, String vmUser, Duration timeout, Duration interval)
@@ -308,13 +308,13 @@ public class PrlDevopsProvisionTest {
             nodes.iterator().next().future.get();
             fail("Expected ExecutionException to be thrown");
         } catch (ExecutionException e) {
-            assertTrue("Cause should be PrlApiTimeoutException",
-                    e.getCause() instanceof PrlApiTimeoutException);
+            assertInstanceOf(PrlApiTimeoutException.class, e.getCause(),
+                    "Cause should be PrlApiTimeoutException");
         }
 
         // Give the cleanup task a moment to run inside the future's catch block.
         Thread.sleep(200);
-        assertTrue("deleteVm() should have been called after failure", stub.deleteVmCalled);
+        assertTrue(stub.deleteVmCalled, "deleteVm() should have been called after failure");
     }
 
     // -------------------------------------------------------------------------
@@ -322,14 +322,14 @@ public class PrlDevopsProvisionTest {
     // -------------------------------------------------------------------------
 
     @Test
-    public void canProvision_returnsTrueForConfiguredCloudAndMatchingLabel() {
+    void canProvision_returnsTrueForConfiguredCloudAndMatchingLabel(JenkinsRule r) {
         TestableCloud cloud = buildCloud("PrlCanProv", new StubApiClient("v", "i"), 5);
 
         assertTrue(cloud.canProvision(new Cloud.CloudState(Label.get("macos-sonoma"), 1)));
     }
 
     @Test
-    public void canProvision_returnsFalseForUnknownLabel() {
+    void canProvision_returnsFalseForUnknownLabel(JenkinsRule r) {
         TestableCloud cloud = buildCloud("PrlCantProv", new StubApiClient("v", "i"), 5);
 
         assertFalse(cloud.canProvision(new Cloud.CloudState(Label.get("unknown-os"), 1)));

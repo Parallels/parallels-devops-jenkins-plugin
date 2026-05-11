@@ -4,7 +4,6 @@ import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
-import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
@@ -22,50 +21,106 @@ import java.util.Collections;
 
 /**
  * Per-VM-type configuration. One {@code AgentTemplate} maps to one VM type in
- * Parallels DevOps Service. Commands are executed via the Parallels DevOps
- * execute API — no SSH connection is required.
+ * Parallels DevOps Service. The provisioning strategy (clone vs. catalog) is
+ * expressed as a {@link ProvisioningConfig} Describable, rendered via
+ * {@code <f:dropdownDescriptorSelector>} with no inline JavaScript.
  */
 public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private final String templateLabel;
-    private final String baseVmName;
     /** OS user account used to run commands on the VM via the execute API. */
     private String vmUser = "parallels";
     /** Jenkins credentials ID for SSH agent bootstrap (username + password or key). */
     private String sshCredentialsId;
+    /**
+     * Filesystem path used as the Jenkins agent workspace on the provisioned VM.
+     * Defaults to {@code /tmp/jenkins-agent} which exists on every OS.
+     * Override with a path that suits your VM image (e.g. {@code /Users/parallels/jenkins-agent}).
+     */
+    private String agentWorkspaceDir = "/tmp/jenkins-agent";
     private int numExecutors = 1;
     private int vmReadyTimeoutSeconds = 300;
     private int vmReadyPollIntervalSeconds = 10;
 
-    // ---- Catalog provisioning fields (only used when provisioningMode == CATALOG) ----
-    private VmProvisioningMode provisioningMode = VmProvisioningMode.CLONE;
-    private String architecture = "arm64";
-    private String catalogId;
-    private String catalogVersion = "latest";
-    private String catalogUrl;
-    private String catalogCredentialsId;
+    /**
+     * Legacy field kept solely for XStream migration of configs saved before the
+     * {@link ProvisioningConfig} refactor. XStream deserializes it from old XML;
+     * {@link #readResolve()} promotes it into a {@link CloneProvisioningConfig}.
+     */
+    @Deprecated
+    private String baseVmName;
+
+    /**
+     * Encapsulates all provisioning-strategy-specific fields (e.g. base VM name
+     * for clone mode, catalog ID/URL for catalog mode).
+     */
+    private ProvisioningConfig provisioningConfig;
 
     @DataBoundConstructor
-    public AgentTemplate(String templateLabel, String baseVmName) {
+    public AgentTemplate(String templateLabel) {
         this.templateLabel = templateLabel;
-        this.baseVmName = baseVmName;
     }
 
     public String getTemplateLabel() { return templateLabel; }
-    public String getBaseVmName() { return baseVmName; }
     public String getVmUser() { return vmUser; }
     public String getSshCredentialsId() { return sshCredentialsId; }
+    public String getAgentWorkspaceDir() { return agentWorkspaceDir; }
     public int getNumExecutors() { return numExecutors; }
     public int getVmReadyTimeoutSeconds() { return vmReadyTimeoutSeconds; }
     public int getVmReadyPollIntervalSeconds() { return vmReadyPollIntervalSeconds; }
-    public VmProvisioningMode getProvisioningMode() { return provisioningMode; }
-    public String getArchitecture() { return architecture; }
-    public String getCatalogId() { return catalogId; }
-    public String getCatalogVersion() { return catalogVersion; }
-    public String getCatalogUrl() { return catalogUrl; }
-    public String getCatalogCredentialsId() { return catalogCredentialsId; }
+    public ProvisioningConfig getProvisioningConfig() { return provisioningConfig; }
+
+    /**
+     * XStream deserialization hook. Migrates old configs that stored
+     * {@code baseVmName} directly on this class (before the
+     * {@link ProvisioningConfig} refactor) into a {@link CloneProvisioningConfig}.
+     * Also guards against {@code null} for configs that predate both fields.
+     */
+    protected Object readResolve() {
+        if (provisioningConfig == null) {
+            //noinspection deprecation
+            provisioningConfig = new CloneProvisioningConfig(
+                    baseVmName != null ? baseVmName : "");
+        }
+        if (agentWorkspaceDir == null || agentWorkspaceDir.isBlank()) {
+            agentWorkspaceDir = "/tmp/jenkins-agent";
+        }
+        return this;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Convenience accessors used by PrlDevopsCloud — delegate to provisioningConfig
+    // ---------------------------------------------------------------------------
+
+    public VmProvisioningMode getProvisioningMode() {
+        return provisioningConfig != null ? provisioningConfig.getMode() : VmProvisioningMode.CLONE;
+    }
+
+    public String getBaseVmName() {
+        return provisioningConfig instanceof CloneProvisioningConfig c ? c.getBaseVmName() : null;
+    }
+
+    public String getArchitecture() {
+        return provisioningConfig instanceof CatalogProvisioningConfig c ? c.getArchitecture() : "arm64";
+    }
+
+    public String getCatalogId() {
+        return provisioningConfig instanceof CatalogProvisioningConfig c ? c.getCatalogId() : null;
+    }
+
+    public String getCatalogVersion() {
+        return provisioningConfig instanceof CatalogProvisioningConfig c ? c.getCatalogVersion() : "latest";
+    }
+
+    public String getCatalogUrl() {
+        return provisioningConfig instanceof CatalogProvisioningConfig c ? c.getCatalogUrl() : null;
+    }
+
+    public String getCatalogCredentialsId() {
+        return provisioningConfig instanceof CatalogProvisioningConfig c ? c.getCatalogCredentialsId() : null;
+    }
 
     @DataBoundSetter
     public void setVmUser(String vmUser) {
@@ -75,6 +130,12 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     @DataBoundSetter
     public void setSshCredentialsId(String sshCredentialsId) {
         this.sshCredentialsId = sshCredentialsId;
+    }
+
+    @DataBoundSetter
+    public void setAgentWorkspaceDir(String agentWorkspaceDir) {
+        this.agentWorkspaceDir = (agentWorkspaceDir != null && !agentWorkspaceDir.isBlank())
+                ? agentWorkspaceDir : "/tmp/jenkins-agent";
     }
 
     @DataBoundSetter
@@ -93,25 +154,9 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     }
 
     @DataBoundSetter
-    public void setProvisioningMode(VmProvisioningMode provisioningMode) {
-        this.provisioningMode = provisioningMode != null ? provisioningMode : VmProvisioningMode.CLONE;
-    }
-
-    @DataBoundSetter
-    public void setArchitecture(String architecture) { this.architecture = architecture; }
-
-    @DataBoundSetter
-    public void setCatalogId(String catalogId) { this.catalogId = catalogId; }
-
-    @DataBoundSetter
-    public void setCatalogVersion(String catalogVersion) { this.catalogVersion = catalogVersion; }
-
-    @DataBoundSetter
-    public void setCatalogUrl(String catalogUrl) { this.catalogUrl = catalogUrl; }
-
-    @DataBoundSetter
-    public void setCatalogCredentialsId(String catalogCredentialsId) {
-        this.catalogCredentialsId = catalogCredentialsId;
+    public void setProvisioningConfig(ProvisioningConfig provisioningConfig) {
+        this.provisioningConfig = provisioningConfig != null
+                ? provisioningConfig : new CloneProvisioningConfig("");
     }
 
     /**
@@ -134,6 +179,11 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
             return "VM Template";
         }
 
+        /** Supplies the list of {@link ProvisioningConfig} descriptors for {@code dropdownDescriptorSelector}. */
+        public java.util.List<Descriptor<ProvisioningConfig>> getProvisioningConfigDescriptors() {
+            return jenkins.model.Jenkins.get().getDescriptorList(ProvisioningConfig.class);
+        }
+
         @POST
         public ListBoxModel doFillSshCredentialsIdItems(@QueryParameter String sshCredentialsId) {
             Jenkins jenkins = Jenkins.get();
@@ -150,51 +200,6 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
                             CredentialsMatchers.always()
                     )
                     .includeCurrentValue(sshCredentialsId);
-        }
-
-        @POST
-        public ListBoxModel doFillCatalogCredentialsIdItems(@QueryParameter String catalogCredentialsId) {
-            Jenkins jenkins = Jenkins.get();
-            if (!jenkins.hasPermission(Jenkins.ADMINISTER)) {
-                return new StandardListBoxModel().includeCurrentValue(catalogCredentialsId);
-            }
-            return new StandardListBoxModel()
-                    .includeEmptyValue()
-                    .includeMatchingAs(
-                            ACL.SYSTEM,
-                            jenkins,
-                            StandardUsernamePasswordCredentials.class,
-                            Collections.emptyList(),
-                            CredentialsMatchers.always()
-                    )
-                    .includeCurrentValue(catalogCredentialsId);
-        }
-
-        public ListBoxModel doFillArchitectureItems(@QueryParameter String architecture) {
-            ListBoxModel items = new ListBoxModel();
-            items.add("arm64", "arm64");
-            items.add("x86_64", "x86_64");
-            return items;
-        }
-
-        @POST
-        public ListBoxModel doFillProvisioningModeItems(@QueryParameter String provisioningMode) {
-            Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-            ListBoxModel items = new ListBoxModel();
-            items.add("Clone existing VM (Host mode)", VmProvisioningMode.CLONE.name());
-            items.add("Create from catalog (Orchestrator mode)", VmProvisioningMode.CATALOG.name());
-            return items;
-        }
-
-        @POST
-        public hudson.util.FormValidation doCheckCatalogId(@QueryParameter String catalogId,
-                                                           @QueryParameter String provisioningMode) {
-            Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-            if ("CATALOG".equals(provisioningMode)
-                    && (catalogId == null || catalogId.isBlank())) {
-                return hudson.util.FormValidation.error("Catalog ID is required");
-            }
-            return hudson.util.FormValidation.ok();
         }
     }
 }

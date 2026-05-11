@@ -1,0 +1,18 @@
+jenkins:
+  clouds:
+    - parallelsDevops:
+        name: "test-clone-cloud"
+        serviceUrl: "http://test-service.invalid:8080"
+        credentialsId: "test-credentials-id"
+        connectionMode: "HOST"
+        maxAgents: 5
+        templates:
+          - templateLabel: "test-label"
+            vmUser: "test-user"
+            agentWorkspaceDir: "/tmp/test-workspace"
+            numExecutors: 2
+            vmReadyTimeoutSeconds: 300
+            vmReadyPollIntervalSeconds: 10
+            provisioningConfig:
+              clone:
+                baseVmName: "test-base-vm"

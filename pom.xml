@@ -37,13 +37,12 @@
         <changelist>999999-SNAPSHOT</changelist>
         <jenkins.baseline>2.528</jenkins.baseline>
         <jenkins.version>${jenkins.baseline}.3</jenkins.version>
-        <hpi.strictBundledArtifacts>true</hpi.strictBundledArtifacts>
         <ban-commons-lang-2.skip>false</ban-commons-lang-2.skip>
+        <ban-deprecated-stapler.skip>false</ban-deprecated-stapler.skip>
+        <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
         <!-- SpotBugs: increase analysis depth (parent POM already runs spotbugs during verify) -->
         <spotbugs.effort>Max</spotbugs.effort>
         <spotbugs.threshold>Low</spotbugs.threshold>
-        <!-- Explicitly declare Jackson as bundled inside the .hpi (not provided by Jenkins core) -->
-        <hpi.bundledArtifacts>jackson-annotations,jackson-core,jackson-databind</hpi.bundledArtifacts>
     </properties>
 
     <dependencyManagement>
@@ -51,7 +50,7 @@
             <dependency>
                 <groupId>io.jenkins.tools.bom</groupId>
                 <artifactId>bom-${jenkins.baseline}.x</artifactId>
-                <version>6364.v16b_76a_4023c7</version>
+                <version>6421.v4a_efb_4b_3a_61d</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
@@ -67,13 +66,14 @@
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>plain-credentials</artifactId>
         </dependency>
-        <!-- Jackson must be bundled in the .hpi — Jenkins core uses it internally but does
-             not expose it to plugin classloaders, so 'provided' causes NoClassDefFoundError
-             in background threads (NodeProvisioner timer) that use the plugin's classloader. -->
+        <!-- Use the shared Jackson API plugin instead of bundling Jackson directly -->
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.15.4</version>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>jackson2-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>ssh-slaves</artifactId>
         </dependency>
         <!-- MockWebServer for unit tests — no live API calls -->
         <dependency>
@@ -88,9 +88,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jenkins-ci.plugins</groupId>
-            <artifactId>ssh-slaves</artifactId>
+            <groupId>io.jenkins</groupId>
+            <artifactId>configuration-as-code</artifactId>
+            <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <repositories>

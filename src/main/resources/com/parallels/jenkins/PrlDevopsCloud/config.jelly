@@ -4,16 +4,18 @@
         <f:textbox />
     </f:entry>
     <f:entry title="Service URL" field="serviceUrl">
-        <f:textbox />
+        <f:textbox description="Base URL of the prl-devops-service instance, e.g. http://my-host:8080" />
     </f:entry>
     <f:entry title="API Credentials" field="credentialsId">
         <c:select />
     </f:entry>
     <f:entry title="Connection Mode" field="connectionMode">
-        <f:select />
+        <f:enum description="HOST: connect directly to a single prl-devops-service host. ORCHESTRATOR: connect via an orchestrator that manages a farm of hosts.">
+            ${it.name()}
+        </f:enum>
     </f:entry>
     <f:entry title="Max Concurrent Agents" field="maxAgents">
-        <f:number default="1" min="1" max="50" />
+        <f:number default="1" min="1" max="50" description="Maximum number of VMs that may be alive at the same time for this cloud. 0 means unlimited." />
     </f:entry>
     <f:validateButton title="Test Connection" method="testConnection"
                       with="serviceUrl,credentialsId" />
