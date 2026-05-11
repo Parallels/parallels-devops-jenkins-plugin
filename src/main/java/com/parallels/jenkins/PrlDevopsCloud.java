@@ -103,12 +103,51 @@ public class PrlDevopsCloud extends Cloud {
     // Cloud provisioning
     // -------------------------------------------------------------------------
 
+    /**
+     * Counts agents belonging to this cloud that are "active" — either online or
+     * within the VM-ready grace window (regardless of SSH state).
+     *
+     * <p>Counting offline-but-young nodes is critical: when the SSH launcher fails
+     * (e.g. host key rejection, SSH not yet ready), the computer is neither
+     * {@code isOnline()} nor {@code isConnecting()}.  Without counting those nodes
+     * we would report {@code active=0} even when two VMs are running, causing the
+     * provisioner to keep requesting more VMs.
+     */
+    private long countActiveAgents() {
+        return Jenkins.get().getNodes().stream()
+                .filter(n -> n instanceof PrlDevopsAgent
+                        && name.equals(((PrlDevopsAgent) n).getCloudName()))
+                .filter(n -> {
+                    Computer c = n.toComputer();
+                    if (c == null) return false;
+                    if (c.isOnline()) return true;
+                    // Count any node (connecting, SSH-failed, or temporarily offline)
+                    // that is still within the VM-ready grace window.  The reconciler
+                    // will remove it if the VM is genuinely gone.
+                    PrlDevopsAgent prl = (PrlDevopsAgent) n;
+                    long ageSeconds =
+                            (System.currentTimeMillis() - prl.getProvisionedAt()) / 1000L;
+                    long graceSeconds = prl.getTemplate().getVmReadyTimeoutSeconds() * 2L;
+                    return ageSeconds < graceSeconds;
+                })
+                .count();
+    }
+
     @Override
     public boolean canProvision(CloudState state) {
         AgentTemplate template = getTemplateForLabel(state.getLabel());
-        return template != null
-                && Util.fixEmptyAndTrim(serviceUrl) != null
-                && Util.fixEmptyAndTrim(credentialsId) != null;
+        if (template == null) return false;
+        if (Util.fixEmptyAndTrim(serviceUrl) == null) return false;
+        if (Util.fixEmptyAndTrim(credentialsId) == null) return false;
+        // Reject templates whose essential provisioning fields are not yet configured.
+        if (template.getProvisioningMode() == VmProvisioningMode.CATALOG) {
+            if (Util.fixEmptyAndTrim(template.getCatalogId()) == null
+                    || Util.fixEmptyAndTrim(template.getCatalogUrl()) == null) return false;
+        } else {
+            if (Util.fixEmptyAndTrim(template.getBaseVmName()) == null) return false;
+        }
+        // Prevent Jenkins from even scheduling a provisioning cycle when already at cap.
+        return maxAgents <= 0 || countActiveAgents() < maxAgents;
     }
 
     @Override
@@ -120,31 +159,7 @@ public class PrlDevopsCloud extends Cloud {
             return Collections.emptyList();
         }
 
-        // Count only nodes that are genuinely active:
-        //   - isOnline()      → SSH connected, build may be running
-        //   - isConnecting()  → SSH launcher is retrying, BUT only within the VM-ready
-        //                       timeout window.  Nodes that are still "connecting" after
-        //                       2× the timeout are stale leftovers from a previous Jenkins
-        //                       session and must NOT consume budget (the reconciler will
-        //                       remove them once the VM-status check detects them as gone).
-        long activeAgents = Jenkins.get().getNodes().stream()
-                .filter(n -> n instanceof PrlDevopsAgent
-                        && name.equals(((PrlDevopsAgent) n).getCloudName()))
-                .filter(n -> {
-                    Computer c = n.toComputer();
-                    if (c == null) return false;
-                    if (c.isOnline()) return true;
-                    if (c.isConnecting()) {
-                        PrlDevopsAgent prl = (PrlDevopsAgent) n;
-                        long ageSeconds =
-                                (System.currentTimeMillis() - prl.getProvisionedAt()) / 1000L;
-                        long graceSeconds = prl.getTemplate().getVmReadyTimeoutSeconds() * 2L;
-                        return ageSeconds < graceSeconds;
-                    }
-                    return false;
-                })
-                .count();
-
+        long activeAgents = countActiveAgents();
         int budget = maxAgents > 0 ? (int) Math.max(0, maxAgents - activeAgents) : excessWorkload;
         int toProvision = Math.min(excessWorkload, budget);
 
@@ -192,13 +207,21 @@ public class PrlDevopsCloud extends Cloud {
     private String provisionFromClone(PrlDevopsApiClient apiClient,
                                       AgentTemplate template,
                                       Label label) throws PrlApiException {
+        String baseVmName = Util.fixEmptyAndTrim(template.getBaseVmName());
+        if (baseVmName == null) {
+            throw new PrlApiException(
+                    "Template '" + template.getTemplateLabel()
+                    + "': Base VM Name is not configured. "
+                    + "Please set it under Manage Jenkins → Clouds → "
+                    + name + " → template '" + template.getTemplateLabel() + "'.");
+        }
         CloneRequest cloneRequest = new CloneRequest(
                 "jenkins-" + label + "-" + System.currentTimeMillis(), null);
-        LOGGER.info("[PrlDevops] Requesting clone of '" + template.getBaseVmName()
+        LOGGER.fine("[PrlDevops] Requesting clone of '" + baseVmName
                 + "' for label '" + label + "'");
-        CloneResponse cloneResponse = apiClient.cloneVm(template.getBaseVmName(), cloneRequest);
+        CloneResponse cloneResponse = apiClient.cloneVm(baseVmName, cloneRequest);
         String vmId = cloneResponse.getId();
-        LOGGER.info("[PrlDevops] Clone requested; VM ID=" + vmId);
+        LOGGER.fine("[PrlDevops] Clone requested; VM ID=" + vmId);
         return vmId;
     }
 
@@ -212,11 +235,11 @@ public class PrlDevopsCloud extends Cloud {
                 connection);
         String vmName = "jenkins-" + label + "-" + System.currentTimeMillis();
         CreateVmRequest request = new CreateVmRequest(vmName, template.getArchitecture(), manifest);
-        LOGGER.info("[PrlDevops] Creating VM from catalog '" + template.getCatalogId()
+        LOGGER.fine("[PrlDevops] Creating VM from catalog '" + template.getCatalogId()
                 + "' for label '" + label + "'");
         CreateVmResponse response = apiClient.createVmFromCatalog(request);
         String vmId = response.getId();
-        LOGGER.info("[PrlDevops] Catalog VM created; VM ID=" + vmId);
+        LOGGER.fine("[PrlDevops] Catalog VM created; VM ID=" + vmId);
         return vmId;
     }
 

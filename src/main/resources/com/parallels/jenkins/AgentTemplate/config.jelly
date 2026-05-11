@@ -6,6 +6,10 @@
     <f:entry title="SSH Credentials" field="sshCredentialsId">
         <c:select />
     </f:entry>
+    <f:entry title="Agent Workspace Directory" field="agentWorkspaceDir">
+        <f:textbox default="/tmp/jenkins-agent"
+                   description="Filesystem path for the Jenkins agent workspace on the VM. Use /tmp/jenkins-agent for Linux/macOS or e.g. C:/jenkins-agent for Windows." />
+    </f:entry>
 
     <f:entry title="Provisioning Mode" field="provisioningConfig">
         <f:dropdownDescriptorSelector field="provisioningConfig"

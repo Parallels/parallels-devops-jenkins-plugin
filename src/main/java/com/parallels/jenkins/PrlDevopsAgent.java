@@ -4,6 +4,7 @@ import hudson.model.Descriptor;
 import hudson.model.Node;
 import hudson.model.TaskListener;
 import hudson.plugins.sshslaves.SSHLauncher;
+import hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy;
 import hudson.slaves.AbstractCloudComputer;
 import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.RetentionStrategy;
@@ -29,8 +30,8 @@ public class PrlDevopsAgent extends AbstractCloudSlave {
             throws Descriptor.FormException, IOException {
         super(
                 "prl-" + vmId,
-                "/home/jenkins-agent",
-                new SSHLauncher(vmIp, 22, template.getSshCredentialsId())
+                template.getAgentWorkspaceDir(),
+                buildLauncher(vmIp, template)
         );
         this.cloudName = cloudName;
         this.template = template;
@@ -41,6 +42,24 @@ public class PrlDevopsAgent extends AbstractCloudSlave {
         setLabelString(template.getTemplateLabel());
         setMode(Node.Mode.NORMAL);
         setRetentionStrategy(RetentionStrategy.NOOP);
+    }
+
+    /**
+     * Builds the SSH launcher for a freshly provisioned, ephemeral VM.
+     *
+     * <ul>
+     *   <li>{@link NonVerifyingKeyVerificationStrategy} — ephemeral VMs have unknown host
+     *       keys; verifying them causes an instant connection failure.</li>
+     *   <li>20 retries / 15 s wait — gives the SSH service inside the VM time to
+     *       become reachable after the OS reports the VM as running.</li>
+     * </ul>
+     */
+    private static SSHLauncher buildLauncher(String vmIp, AgentTemplate template) {
+        SSHLauncher launcher = new SSHLauncher(vmIp, 22, template.getSshCredentialsId());
+        launcher.setSshHostKeyVerificationStrategy(new NonVerifyingKeyVerificationStrategy());
+        launcher.setMaxNumRetries(20);
+        launcher.setRetryWaitTime(15);
+        return launcher;
     }
 
     public String getCloudName() { return cloudName; }

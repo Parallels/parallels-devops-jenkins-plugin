@@ -3,7 +3,7 @@
 [![CI](https://github.com/Parallels/parallels-devops-jenkins-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/Parallels/parallels-devops-jenkins-plugin/actions/workflows/ci.yml)
 [![Release](https://github.com/Parallels/parallels-devops-jenkins-plugin/actions/workflows/release.yml/badge.svg)](https://github.com/Parallels/parallels-devops-jenkins-plugin/actions/workflows/release.yml)
 
-This plugin integrates Jenkins with [Parallels DevOps Service](https://www.parallels.com/products/devops/), allowing Jenkins to dynamically provision, manage, and destroy macOS, Windows, or Linux virtual machines as temporary build agents on demand.
+This plugin integrates Jenkins with [Parallels DevOps Service](https://parallels.github.io/prl-devops-service/quick-start/), allowing Jenkins to dynamically provision, manage, and destroy macOS, Windows, or Linux virtual machines as temporary build agents on demand.
 
 ## Features
 

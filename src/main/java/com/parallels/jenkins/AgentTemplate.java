@@ -34,17 +34,29 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     private String vmUser = "parallels";
     /** Jenkins credentials ID for SSH agent bootstrap (username + password or key). */
     private String sshCredentialsId;
+    /**
+     * Filesystem path used as the Jenkins agent workspace on the provisioned VM.
+     * Defaults to {@code /tmp/jenkins-agent} which exists on every OS.
+     * Override with a path that suits your VM image (e.g. {@code /Users/parallels/jenkins-agent}).
+     */
+    private String agentWorkspaceDir = "/tmp/jenkins-agent";
     private int numExecutors = 1;
     private int vmReadyTimeoutSeconds = 300;
     private int vmReadyPollIntervalSeconds = 10;
 
     /**
+     * Legacy field kept solely for XStream migration of configs saved before the
+     * {@link ProvisioningConfig} refactor. XStream deserializes it from old XML;
+     * {@link #readResolve()} promotes it into a {@link CloneProvisioningConfig}.
+     */
+    @Deprecated
+    private String baseVmName;
+
+    /**
      * Encapsulates all provisioning-strategy-specific fields (e.g. base VM name
      * for clone mode, catalog ID/URL for catalog mode).
-     * Defaults to a {@link CloneProvisioningConfig} with an empty base-VM name
-     * so existing round-trip tests keep working without explicit configuration.
      */
-    private ProvisioningConfig provisioningConfig = new CloneProvisioningConfig("");
+    private ProvisioningConfig provisioningConfig;
 
     @DataBoundConstructor
     public AgentTemplate(String templateLabel) {
@@ -54,10 +66,29 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     public String getTemplateLabel() { return templateLabel; }
     public String getVmUser() { return vmUser; }
     public String getSshCredentialsId() { return sshCredentialsId; }
+    public String getAgentWorkspaceDir() { return agentWorkspaceDir; }
     public int getNumExecutors() { return numExecutors; }
     public int getVmReadyTimeoutSeconds() { return vmReadyTimeoutSeconds; }
     public int getVmReadyPollIntervalSeconds() { return vmReadyPollIntervalSeconds; }
     public ProvisioningConfig getProvisioningConfig() { return provisioningConfig; }
+
+    /**
+     * XStream deserialization hook. Migrates old configs that stored
+     * {@code baseVmName} directly on this class (before the
+     * {@link ProvisioningConfig} refactor) into a {@link CloneProvisioningConfig}.
+     * Also guards against {@code null} for configs that predate both fields.
+     */
+    protected Object readResolve() {
+        if (provisioningConfig == null) {
+            //noinspection deprecation
+            provisioningConfig = new CloneProvisioningConfig(
+                    baseVmName != null ? baseVmName : "");
+        }
+        if (agentWorkspaceDir == null || agentWorkspaceDir.isBlank()) {
+            agentWorkspaceDir = "/tmp/jenkins-agent";
+        }
+        return this;
+    }
 
     // ---------------------------------------------------------------------------
     // Convenience accessors used by PrlDevopsCloud — delegate to provisioningConfig
@@ -99,6 +130,12 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     @DataBoundSetter
     public void setSshCredentialsId(String sshCredentialsId) {
         this.sshCredentialsId = sshCredentialsId;
+    }
+
+    @DataBoundSetter
+    public void setAgentWorkspaceDir(String agentWorkspaceDir) {
+        this.agentWorkspaceDir = (agentWorkspaceDir != null && !agentWorkspaceDir.isBlank())
+                ? agentWorkspaceDir : "/tmp/jenkins-agent";
     }
 
     @DataBoundSetter
