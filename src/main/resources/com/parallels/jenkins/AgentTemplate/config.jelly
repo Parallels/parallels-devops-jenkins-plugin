@@ -23,10 +23,10 @@
         <f:textbox default="parallels" />
     </f:entry>
     <f:entry title="VM Ready Timeout (s)" field="vmReadyTimeoutSeconds">
-        <f:number default="300" min="30" />
+        <f:number default="300" min="30" description="How long to wait (in seconds) for the VM to reach running state before failing." />
     </f:entry>
     <f:entry title="VM Ready Poll Interval (s)" field="vmReadyPollIntervalSeconds">
-        <f:number default="10" min="5" />
+        <f:number default="10" min="5" description="How often (in seconds) to poll the prl-devops-service for VM status while waiting for it to start." />
     </f:entry>
 </j:jelly>
 

@@ -32,7 +32,7 @@ public class PrlDevopsPlannedNode extends NodeProvisioner.PlannedNode {
     private static final Logger LOGGER = Logger.getLogger(PrlDevopsPlannedNode.class.getName());
 
     /**
-     * @param cloudName   Name of the owning {@link PrlDevopsCloud} (stored on the slave for counting).
+     * @param cloudName   Name of the owning {@link PrlDevopsCloud} (stored on the agent for counting).
      * @param template    The {@link AgentTemplate} used to clone this VM.
      * @param vmId        ID of the newly cloned VM returned by the API.
      * @param apiClient   API client used to poll status and clean up on failure.

@@ -10,7 +10,6 @@ This plugin integrates Jenkins with [Parallels DevOps Service](https://parallels
 - **Dynamic Node Provisioning:** Automatically requests cloned VMs from the prl-devops-service when the Jenkins queue is full.
 - **Orchestrator Mode Support:** Integrates with the Parallels Catalog service to cache golden images and balance resources across a farm of Parallels DevOps VM hosts.
 - **Auto Cleanup:** Automatically destroys the VMs after each build completes.
-- **Pipeline Support:** Use the `parallelsDevopsCommand` step directly in your Jenkinsfile.
 
 ## Usage
 
@@ -25,9 +24,12 @@ This plugin integrates Jenkins with [Parallels DevOps Service](https://parallels
 
 ### Pipeline Usage
 
+Jobs run directly on the provisioned VM agent — use standard `sh` or `bat` steps:
+
 ```groovy
 node('macos-sonoma') {
-    parallelsDevopsCommand command: 'sw_vers'
+    sh 'sw_vers'
+    sh 'xcodebuild -version'
 }
 ```
 
