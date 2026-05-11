@@ -597,6 +597,7 @@ public class PrlDevopsCloud extends Cloud {
     }
 
     @Extension
+    @org.jenkinsci.Symbol("parallelsDevops")
     public static class DescriptorImpl extends Descriptor<Cloud> {
         @Override
         public String getDisplayName() {

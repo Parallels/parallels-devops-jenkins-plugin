@@ -2,6 +2,7 @@ package com.parallels.jenkins;
 
 import hudson.Extension;
 import hudson.model.Descriptor;
+import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 /**
@@ -25,6 +26,7 @@ public final class CloneProvisioningConfig extends ProvisioningConfig {
     public VmProvisioningMode getMode() { return VmProvisioningMode.CLONE; }
 
     @Extension
+    @Symbol("clone")
     public static class DescriptorImpl extends Descriptor<ProvisioningConfig> {
         @Override
         public String getDisplayName() { return "Clone existing VM (Host mode)"; }

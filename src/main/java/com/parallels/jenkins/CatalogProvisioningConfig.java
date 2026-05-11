@@ -6,6 +6,7 @@ import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import hudson.Extension;
 import hudson.model.Descriptor;
+import org.jenkinsci.Symbol;
 import hudson.security.ACL;
 import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
@@ -59,6 +60,7 @@ public final class CatalogProvisioningConfig extends ProvisioningConfig {
     public VmProvisioningMode getMode() { return VmProvisioningMode.CATALOG; }
 
     @Extension
+    @Symbol("catalog")
     public static class DescriptorImpl extends Descriptor<ProvisioningConfig> {
 
         @Override
