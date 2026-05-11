@@ -164,7 +164,7 @@ public class PrlDevopsCloud extends Cloud {
         int toProvision = Math.min(excessWorkload, budget);
 
         if (toProvision <= 0) {
-            LOGGER.info("[PrlDevops] maxAgents cap reached (active=" + activeAgents
+            LOGGER.fine("[PrlDevops] maxAgents cap reached (active=" + activeAgents
                     + ", max=" + maxAgents + "). Skipping provisioning.");
             return Collections.emptyList();
         }
