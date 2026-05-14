@@ -4,6 +4,8 @@ import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.parallels.jenkins.api.dto.AuthTokenRequest;
 import com.parallels.jenkins.api.ConnectionMode;
 import com.parallels.jenkins.api.PrlDevopsApiClient;
 import com.parallels.jenkins.api.PrlDevopsHttpClient;
@@ -49,6 +51,7 @@ import java.util.logging.Logger;
 public class PrlDevopsCloud extends Cloud {
 
     private static final Logger LOGGER = Logger.getLogger(PrlDevopsCloud.class.getName());
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private String serviceUrl;
     private String credentialsId;
@@ -279,10 +282,7 @@ public class PrlDevopsCloud extends Cloud {
             base += "/";
         }
         String authUrl = base + "api/v1/auth/token";
-
-        String username = upc.getUsername().replace("\"", "\\\"");
-        String password = upc.getPassword().getPlainText().replace("\"", "\\\"");
-        String jsonBody = "{\"email\":\"" + username + "\",\"password\":\"" + password + "\"}";
+        String jsonBody = serializeAuthTokenRequest(upc.getUsername(), upc.getPassword().getPlainText());
 
         try {
             HttpClient client = HttpClient.newBuilder()
@@ -313,6 +313,14 @@ public class PrlDevopsCloud extends Cloud {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new PrlApiException("Auth token fetch interrupted", e);
+        }
+    }
+
+    private static String serializeAuthTokenRequest(String email, String password) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(new AuthTokenRequest(email, password));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalArgumentException("Failed to serialise auth token request", e);
         }
     }
 
@@ -556,10 +564,9 @@ public class PrlDevopsCloud extends Cloud {
                             String baseUrl = serviceUrl;
                             if (!baseUrl.endsWith("/")) { baseUrl += "/"; }
                             String authUrl = baseUrl + "api/v1/auth/token";
-                            
-                            String username = upc.getUsername().replace("\"", "\\\"");
-                            String password = upc.getPassword().getPlainText().replace("\"", "\\\"");
-                            String jsonBody = "{\"email\":\"" + username + "\",\"password\":\"" + password + "\"}";
+                            String jsonBody = serializeAuthTokenRequest(
+                                upc.getUsername(),
+                                upc.getPassword().getPlainText());
 
                             HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
                             HttpRequest authReq = HttpRequest.newBuilder()
@@ -625,5 +632,6 @@ public class PrlDevopsCloud extends Cloud {
                 return FormValidation.error("Connection interrupted");
             }
         }
+
     }
 }
