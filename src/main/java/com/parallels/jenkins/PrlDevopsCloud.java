@@ -49,6 +49,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -139,6 +142,7 @@ public class PrlDevopsCloud extends Cloud {
         if (template == null) return false;
         if (Util.fixEmptyAndTrim(serviceUrl) == null) return false;
         if (Util.fixEmptyAndTrim(credentialsId) == null) return false;
+        if (Util.fixEmptyAndTrim(template.getSshCredentialsId()) == null) return false;
         // Reject templates whose essential provisioning fields are not yet configured.
         if (template.getProvisioningMode() == VmProvisioningMode.CATALOG) {
             if (Util.fixEmptyAndTrim(template.getCatalogId()) == null
@@ -156,6 +160,11 @@ public class PrlDevopsCloud extends Cloud {
         AgentTemplate template = getTemplateForLabel(label);
         if (template == null) {
             LOGGER.warning("[PrlDevops] No matching template for label: " + label);
+            return Collections.emptyList();
+        }
+        if (Util.fixEmptyAndTrim(template.getSshCredentialsId()) == null) {
+            LOGGER.warning("[PrlDevops] Template '" + template.getTemplateLabel()
+                    + "' has no SSH credentials configured. Skipping provisioning.");
             return Collections.emptyList();
         }
 
@@ -567,6 +576,21 @@ public class PrlDevopsCloud extends Cloud {
             }
             PrlDevopsAgent agent = (PrlDevopsAgent) node;
             Jenkins jenkins = Jenkins.get();
+
+            Computer computer = agent.toComputer();
+            if (computer != null) {
+                try {
+                    computer.disconnect().get(30, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOG.log(Level.FINE,
+                            "[PrlDevops] Interrupted while disconnecting " + agent.getNodeName(), e);
+                } catch (ExecutionException | TimeoutException e) {
+                    LOG.log(Level.FINE,
+                            "[PrlDevops] Could not confirm clean disconnect for " + agent.getNodeName()
+                                    + " before VM deletion.", e);
+                }
+            }
 
             // Force-delete the VM (running or not) using ?force=true
             Cloud cloud = jenkins.clouds.getByName(agent.getCloudName());
