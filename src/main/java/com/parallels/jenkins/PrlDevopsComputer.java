@@ -1,15 +1,28 @@
 package com.parallels.jenkins;
 
+import hudson.model.Executor;
+import hudson.model.Queue;
 import hudson.slaves.AbstractCloudComputer;
 
 /**
- * Jenkins computer (agent connection) for a Parallels DevOps provisioned VM.
- * Paired with {@link PrlDevopsSlave} and used as the type parameter of
- * {@link PrlDevopsRetentionStrategy}.
+ * Cloud computer that marks a provisioned agent as one-shot after its first task.
  */
-public class PrlDevopsComputer extends AbstractCloudComputer<PrlDevopsSlave> {
+public class PrlDevopsComputer extends AbstractCloudComputer<PrlDevopsAgent> {
 
-    public PrlDevopsComputer(PrlDevopsSlave slave) {
-        super(slave);
+    private volatile boolean taskAccepted;
+
+    public PrlDevopsComputer(PrlDevopsAgent agent) {
+        super(agent);
+    }
+
+    public boolean hasAcceptedTask() {
+        return taskAccepted;
+    }
+
+    @Override
+    public void taskAccepted(Executor executor, Queue.Task task) {
+        super.taskAccepted(executor, task);
+        taskAccepted = true;
+        setAcceptingTasks(false);
     }
 }

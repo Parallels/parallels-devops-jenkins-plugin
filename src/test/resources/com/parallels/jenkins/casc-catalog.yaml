@@ -1,0 +1,21 @@
+jenkins:
+  clouds:
+    - parallelsDevops:
+        name: "test-catalog-cloud"
+        serviceUrl: "http://test-orchestrator.invalid:8080"
+        credentialsId: "test-credentials-id"
+        connectionMode: "ORCHESTRATOR"
+        maxAgents: 3
+        templates:
+          - templateLabel: "test-label"
+            vmUser: "test-user"
+            agentWorkspaceDir: "/tmp/test-workspace"
+            numExecutors: 1
+            vmReadyTimeoutSeconds: 600
+            vmReadyPollIntervalSeconds: 15
+            provisioningConfig:
+              catalog:
+                catalogId: "test-catalog-id"
+                catalogUrl: "http://test-catalog.invalid"
+                architecture: "x86_64"
+                catalogVersion: "latest"
