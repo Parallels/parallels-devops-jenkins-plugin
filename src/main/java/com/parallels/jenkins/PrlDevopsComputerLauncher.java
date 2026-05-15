@@ -2,6 +2,7 @@ package com.parallels.jenkins;
 
 import hudson.model.TaskListener;
 import hudson.plugins.sshslaves.SSHLauncher;
+import hudson.plugins.sshslaves.verifiers.NonVerifyingKeyVerificationStrategy;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.SlaveComputer;
 
@@ -34,6 +35,7 @@ public class PrlDevopsComputerLauncher extends ComputerLauncher {
     private final String jvmOptions;
     private final int sshRetries;
     private final int sshRetryDelaySec;
+    private volatile boolean launchExhaustedRetries;
 
     public PrlDevopsComputerLauncher(String vmIp, AgentTemplate template) {
         this.vmIp = vmIp;
@@ -51,59 +53,53 @@ public class PrlDevopsComputerLauncher extends ComputerLauncher {
     String getSshCredentialsId() { return sshCredentialsId; }
     int getSshRetries() { return sshRetries; }
     int getSshRetryDelaySec() { return sshRetryDelaySec; }
+    boolean hasExhaustedRetries() { return launchExhaustedRetries; }
 
     @Override
     public void launch(SlaveComputer computer, TaskListener listener) throws IOException {
         PrintStream log = listener.getLogger();
+        if (launchExhaustedRetries) {
+            throw new IOException("[PrlDevops] SSH retries already exhausted for VM " + vmIp
+                    + ":" + sshPort + ". Waiting for retention cleanup.");
+        }
+
         log.println("[PrlDevops] Connecting to VM " + vmIp + " via SSH"
                 + " (port=" + sshPort
                 + ", retries=" + sshRetries
                 + ", retryDelay=" + sshRetryDelaySec + "s)");
 
-        for (int attempt = 1; attempt <= sshRetries; attempt++) {
-            log.println("[PrlDevops] SSH attempt " + attempt + "/" + sshRetries
-                    + " to " + vmIp + ":" + sshPort);
-
-            SSHLauncher sshLauncher = buildSshLauncher();
-            try {
-                sshLauncher.launch(computer, listener);
-                if (computer.isOnline()) {
-                    LOGGER.info("[PrlDevops] SSH agent online after attempt " + attempt
-                            + " for VM " + vmIp);
-                    return;
-                }
-                log.println("[PrlDevops] Attempt " + attempt
-                        + " did not bring node online — SSH daemon may still be starting.");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("[PrlDevops] SSH launch interrupted for VM " + vmIp, e);
-            } catch (Exception e) {
-                log.println("[PrlDevops] Attempt " + attempt + " failed: " + e.getMessage());
-                LOGGER.fine("[PrlDevops] SSH attempt " + attempt + " exception: " + e);
+        SSHLauncher sshLauncher = buildSshLauncher();
+        try {
+            sshLauncher.launch(computer, listener);
+            launchExhaustedRetries = false;
+            if (computer.isOnline()) {
+                LOGGER.fine("[PrlDevops] SSH agent online for VM " + vmIp);
+                return;
             }
-
-            if (attempt < sshRetries) {
-                log.println("[PrlDevops] Waiting " + sshRetryDelaySec
-                        + "s before next SSH attempt...");
-                try {
-                    Thread.sleep(sshRetryDelaySec * 1000L);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new IOException("[PrlDevops] SSH retry wait interrupted", e);
-                }
+            throw new IOException("[PrlDevops] SSH bootstrap finished without bringing node online for VM "
+                    + vmIp + ":" + sshPort);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("[PrlDevops] SSH launch interrupted for VM " + vmIp, e);
+        } catch (IOException | RuntimeException e) {
+            launchExhaustedRetries = true;
+            computer.setAcceptingTasks(false);
+            String msg = "[PrlDevops] All " + sshRetries + " SSH attempts failed for VM " + vmIp
+                    + ":" + sshPort + ". Waiting for retention cleanup.";
+            log.println(msg);
+            LOGGER.warning(msg);
+            if (e instanceof IOException ioException) {
+                throw ioException;
             }
+            throw new IOException("[PrlDevops] SSH launch failed for VM " + vmIp, e);
         }
-
-        // All attempts exhausted
-        String msg = "[PrlDevops] All " + sshRetries + " SSH attempts failed for VM " + vmIp
-                + ":" + sshPort + ". Marking node offline.";
-        log.println(msg);
-        LOGGER.warning(msg);
-        computer.setAcceptingTasks(false);
     }
 
-    private SSHLauncher buildSshLauncher() {
+    SSHLauncher buildSshLauncher() {
         SSHLauncher launcher = new SSHLauncher(vmIp, sshPort, sshCredentialsId);
+        launcher.setSshHostKeyVerificationStrategy(new NonVerifyingKeyVerificationStrategy());
+        launcher.setMaxNumRetries(sshRetries);
+        launcher.setRetryWaitTime(sshRetryDelaySec);
         if (javaPath != null && !javaPath.isBlank() && !javaPath.equals("java")) {
             launcher.setJavaPath(javaPath);
         }

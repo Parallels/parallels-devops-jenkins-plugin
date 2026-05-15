@@ -24,6 +24,11 @@ public class PrlDevopsRetentionStrategy extends RetentionStrategy<PrlDevopsCompu
     @Override
     public long check(PrlDevopsComputer computer) {
         if (!computer.hasAcceptedTask()) {
+            if (hasExhaustedBootstrapRetries(computer)) {
+                computer.setAcceptingTasks(false);
+                tearDown(computer, "SSH bootstrap exhausted configured retries");
+                return 1;
+            }
             if (!computer.isOnline() && !computer.isConnecting()) {
                 computer.connect(false);
             }
@@ -35,7 +40,7 @@ public class PrlDevopsRetentionStrategy extends RetentionStrategy<PrlDevopsCompu
         }
 
         computer.setAcceptingTasks(false);
-        tearDown(computer);
+        tearDown(computer, "Completed one-shot Parallels build");
         return 1;
     }
 
@@ -46,17 +51,26 @@ public class PrlDevopsRetentionStrategy extends RetentionStrategy<PrlDevopsCompu
 
     @Override
     public void start(PrlDevopsComputer computer) {
-        computer.connect(false);
+        if (!hasExhaustedBootstrapRetries(computer)) {
+            computer.connect(false);
+        }
     }
 
-    private void tearDown(PrlDevopsComputer computer) {
+    private boolean hasExhaustedBootstrapRetries(PrlDevopsComputer computer) {
+        PrlDevopsAgent agent = computer.getNode();
+        return agent != null
+                && agent.getLauncher() instanceof PrlDevopsComputerLauncher launcher
+                && launcher.hasExhaustedRetries();
+    }
+
+    private void tearDown(PrlDevopsComputer computer, String offlineReason) {
         PrlDevopsAgent agent = computer.getNode();
         if (agent == null) {
             return;
         }
 
         try {
-            computer.disconnect(new OfflineCause.ByCLI("Completed one-shot Parallels build"))
+            computer.disconnect(new OfflineCause.ByCLI(offlineReason))
                     .get(30, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
