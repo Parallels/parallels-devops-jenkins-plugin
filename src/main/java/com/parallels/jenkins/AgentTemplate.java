@@ -5,13 +5,13 @@ import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.model.Label;
 import hudson.security.ACL;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
-import hudson.Util;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -42,12 +42,22 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     private String vmUser = DEFAULT_VM_USER;
     /** Jenkins credentials ID for SSH agent bootstrap (username + password or key). */
     private String sshCredentialsId;
+    /** SSH port on the cloned VM (default 22). */
+    private int sshPort = 22;
+    /** Path to Java on the agent VM (default: {@code java}). */
+    private String javaPath = "java";
+    /** Extra JVM flags passed to the remoting process. */
+    private String jvmOptions = "";
+    /** Maximum SSH connection attempts before marking the node offline (default 5). */
+    private int sshRetries = 5;
+    /** Seconds to wait between SSH retry attempts (default 15). */
+    private int sshRetryDelaySec = 15;
     /**
      * Filesystem path used as the Jenkins agent workspace on the provisioned VM.
-        * Defaults to {@code /tmp/jenkins-agent} for compatibility with existing test images.
-        * Override with a path that suits your VM image.
+     * Defaults to {@code /tmp/jenkins-agent} for compatibility with existing test images.
+     * Override with a path that suits your VM image.
      */
-        private String agentWorkspaceDir = DEFAULT_AGENT_WORKSPACE_DIR;
+    private String agentWorkspaceDir = DEFAULT_AGENT_WORKSPACE_DIR;
     private int numExecutors = ONE_SHOT_EXECUTORS;
     private int vmReadyTimeoutSeconds = 300;
     private int vmReadyPollIntervalSeconds = 10;
@@ -74,6 +84,11 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     public String getTemplateLabel() { return templateLabel; }
     public String getVmUser() { return vmUser; }
     public String getSshCredentialsId() { return sshCredentialsId; }
+    public int getSshPort() { return sshPort; }
+    public String getJavaPath() { return javaPath; }
+    public String getJvmOptions() { return jvmOptions; }
+    public int getSshRetries() { return sshRetries; }
+    public int getSshRetryDelaySec() { return sshRetryDelaySec; }
     public String getAgentWorkspaceDir() { return agentWorkspaceDir; }
     public int getNumExecutors() { return ONE_SHOT_EXECUTORS; }
     public int getVmReadyTimeoutSeconds() { return vmReadyTimeoutSeconds; }
@@ -107,8 +122,7 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     protected Object readResolve() {
         if (provisioningConfig == null) {
             //noinspection deprecation
-            provisioningConfig = new CloneProvisioningConfig(
-                    baseVmName != null ? baseVmName : "");
+            provisioningConfig = new CloneProvisioningConfig(baseVmName != null ? baseVmName : "");
         }
         if (agentWorkspaceDir == null || agentWorkspaceDir.isBlank()) {
             agentWorkspaceDir = DEFAULT_AGENT_WORKSPACE_DIR;
@@ -116,13 +130,24 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
         if (vmUser == null) {
             vmUser = DEFAULT_VM_USER;
         }
+        if (sshPort <= 0) {
+            sshPort = 22;
+        }
+        if (javaPath == null || javaPath.isBlank()) {
+            javaPath = "java";
+        }
+        if (jvmOptions == null) {
+            jvmOptions = "";
+        }
+        if (sshRetries <= 0) {
+            sshRetries = 5;
+        }
+        if (sshRetryDelaySec <= 0) {
+            sshRetryDelaySec = 15;
+        }
         numExecutors = ONE_SHOT_EXECUTORS;
         return this;
     }
-
-    // ---------------------------------------------------------------------------
-    // Convenience accessors used by PrlDevopsCloud — delegate to provisioningConfig
-    // ---------------------------------------------------------------------------
 
     public VmProvisioningMode getProvisioningMode() {
         return provisioningConfig != null ? provisioningConfig.getMode() : VmProvisioningMode.CLONE;
@@ -163,6 +188,31 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
     }
 
     @DataBoundSetter
+    public void setSshPort(int sshPort) {
+        this.sshPort = sshPort > 0 ? sshPort : 22;
+    }
+
+    @DataBoundSetter
+    public void setJavaPath(String javaPath) {
+        this.javaPath = (javaPath != null && !javaPath.isBlank()) ? javaPath : "java";
+    }
+
+    @DataBoundSetter
+    public void setJvmOptions(String jvmOptions) {
+        this.jvmOptions = jvmOptions != null ? jvmOptions : "";
+    }
+
+    @DataBoundSetter
+    public void setSshRetries(int sshRetries) {
+        this.sshRetries = sshRetries > 0 ? sshRetries : 5;
+    }
+
+    @DataBoundSetter
+    public void setSshRetryDelaySec(int sshRetryDelaySec) {
+        this.sshRetryDelaySec = sshRetryDelaySec > 0 ? sshRetryDelaySec : 15;
+    }
+
+    @DataBoundSetter
     public void setAgentWorkspaceDir(String agentWorkspaceDir) {
         this.agentWorkspaceDir = (agentWorkspaceDir != null && !agentWorkspaceDir.isBlank())
                 ? agentWorkspaceDir : DEFAULT_AGENT_WORKSPACE_DIR;
@@ -191,8 +241,7 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
 
     /**
      * Returns {@code true} when this template's label set satisfies the given
-     * Jenkins {@link Label} expression (i.e. a queued job requiring
-     * {@code label} can be run on a VM provisioned from this template).
+     * Jenkins {@link Label} expression.
      */
     public boolean matches(Label label) {
         if (label == null) {
@@ -209,9 +258,8 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
             return "VM Template";
         }
 
-        /** Supplies the list of {@link ProvisioningConfig} descriptors for {@code dropdownDescriptorSelector}. */
         public java.util.List<Descriptor<ProvisioningConfig>> getProvisioningConfigDescriptors() {
-            return jenkins.model.Jenkins.get().getDescriptorList(ProvisioningConfig.class);
+            return Jenkins.get().getDescriptorList(ProvisioningConfig.class);
         }
 
         @Override
@@ -236,8 +284,7 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
                             jenkins,
                             StandardUsernameCredentials.class,
                             Collections.emptyList(),
-                            CredentialsMatchers.always()
-                    )
+                            CredentialsMatchers.always())
                     .includeCurrentValue(sshCredentialsId);
         }
 

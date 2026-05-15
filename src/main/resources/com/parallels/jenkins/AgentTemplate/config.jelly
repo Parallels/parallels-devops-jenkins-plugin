@@ -21,5 +21,23 @@
     <f:entry title="VM Ready Poll Interval (s)" field="vmReadyPollIntervalSeconds">
         <f:number default="10" min="5" description="How often (in seconds) to poll the prl-devops-service for VM status while waiting for it to start." />
     </f:entry>
+
+    <f:advanced>
+        <f:entry title="SSH Port" field="sshPort">
+            <f:number default="22" min="1" max="65535" />
+        </f:entry>
+        <f:entry title="Java Path" field="javaPath">
+            <f:textbox default="java" placeholder="java" />
+        </f:entry>
+        <f:entry title="JVM Options" field="jvmOptions">
+            <f:textbox placeholder="-Xmx512m" />
+        </f:entry>
+        <f:entry title="SSH Retries" field="sshRetries">
+            <f:number default="5" min="1" />
+        </f:entry>
+        <f:entry title="SSH Retry Delay (seconds)" field="sshRetryDelaySec">
+            <f:number default="15" min="1" />
+        </f:entry>
+    </f:advanced>
 </j:jelly>
 
