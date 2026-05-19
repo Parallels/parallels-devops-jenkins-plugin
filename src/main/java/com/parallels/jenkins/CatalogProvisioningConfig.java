@@ -89,8 +89,9 @@ public final class CatalogProvisioningConfig extends ProvisioningConfig {
                                           Duration pollInterval,
                                           ExecutorService executor) throws PrlApiException {
         String connection = buildCatalogConnectionString();
-        CatalogManifest manifest = new CatalogManifest(catalogId, catalogVersion, connection);
         String vmName = "jenkins-" + label + "-" + System.currentTimeMillis();
+        CatalogManifest manifest = new CatalogManifest(catalogId, catalogVersion, connection,
+                vmName, architecture);
         CreateVmRequest request = new CreateVmRequest(vmName, architecture, manifest);
         LOGGER.fine("[PrlDevops] Creating VM from catalog '" + catalogId + "' for label '" + label + "'");
         CreateVmResponse response = apiClient.createVmFromCatalog(request);

@@ -59,7 +59,7 @@ public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implem
      */
     private String agentWorkspaceDir = DEFAULT_AGENT_WORKSPACE_DIR;
     private int numExecutors = ONE_SHOT_EXECUTORS;
-    private int vmReadyTimeoutSeconds = 300;
+    private int vmReadyTimeoutSeconds = 600;  // 10 min — covers VM boot + SSH readiness after creation
     private int vmReadyPollIntervalSeconds = 10;
 
     /**

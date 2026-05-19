@@ -20,6 +20,6 @@
     <f:validateButton title="Test Connection" method="testConnection"
                       with="serviceUrl,credentialsId" />
     <f:block>
-        <f:repeatableProperty field="templates" minimum="1" />
+        <f:repeatableProperty field="templates" />
     </f:block>
 </j:jelly>

@@ -35,13 +35,13 @@ import java.time.Instant;
  *       .build();
  * </pre>
  *
- * For orchestrator mode also supply a {@code hostId}:
+ * For orchestrator mode, no {@code hostId} is needed — the orchestrator
+ * routes requests to the appropriate host internally:
  * <pre>
  *   PrlDevopsApiClient client = new PrlDevopsHttpClient.Builder()
  *       .baseUrl("https://orchestrator:8080")
  *       .bearerToken("secret-token")
  *       .mode(ConnectionMode.ORCHESTRATOR)
- *       .hostId("host-uuid-123")
  *       .build();
  * </pre>
  *
@@ -54,7 +54,6 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
     private final String baseUrl;
     private final Secret bearerToken;
     private final ConnectionMode mode;
-    private final String hostId;
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
 
@@ -62,7 +61,6 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
         this.baseUrl = stripTrailingSlash(builder.baseUrl);
         this.bearerToken = Secret.fromString(Secret.toString(builder.bearerToken));
         this.mode = builder.mode;
-        this.hostId = builder.hostId;
         this.httpClient = builder.httpClient != null
                 ? builder.httpClient
                 : HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
@@ -91,8 +89,9 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
 
     @Override
     public CreateVmResponse createVmFromCatalog(CreateVmRequest request) throws PrlApiException {
-        // Catalog creation always targets /api/v1/machines regardless of mode
-        String path = "/api/v1/machines";
+        String path = mode == ConnectionMode.ORCHESTRATOR
+                ? "/api/v1/orchestrator/machines"
+                : "/api/v1/machines";
         String body = serialize(request);
         HttpResponse<String> response = send(
                 HttpRequest.newBuilder()
@@ -236,7 +235,7 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
      */
     private String machinePath(String vmId) {
         if (mode == ConnectionMode.ORCHESTRATOR) {
-            return "/api/v1/orchestrator/hosts/" + hostId + "/machines/" + vmId;
+            return "/api/v1/orchestrator/machines/" + vmId;
         }
         return "/api/v1/machines/" + vmId;
     }
@@ -319,7 +318,6 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
         private String baseUrl;
         private Secret bearerToken;
         private ConnectionMode mode = ConnectionMode.HOST;
-        private String hostId;
         /** Allows injection of a custom HttpClient (primarily for testing). */
         HttpClient httpClient;
 
@@ -338,14 +336,6 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
             return this;
         }
 
-        /**
-         * Required when {@link ConnectionMode#ORCHESTRATOR} is used.
-         */
-        public Builder hostId(String hostId) {
-            this.hostId = hostId;
-            return this;
-        }
-
         /** Package-private — intended for test use only. */
         Builder httpClient(HttpClient httpClient) {
             this.httpClient = httpClient;
@@ -358,9 +348,6 @@ public class PrlDevopsHttpClient implements PrlDevopsApiClient {
             }
             if (bearerToken == null || bearerToken.getPlainText().isBlank()) {
                 throw new IllegalStateException("bearerToken must be set");
-            }
-            if (mode == ConnectionMode.ORCHESTRATOR && (hostId == null || hostId.isBlank())) {
-                throw new IllegalStateException("hostId must be set when mode is ORCHESTRATOR");
             }
             return new PrlDevopsHttpClient(this);
         }

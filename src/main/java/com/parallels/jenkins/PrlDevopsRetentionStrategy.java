@@ -87,7 +87,7 @@ public class PrlDevopsRetentionStrategy extends RetentionStrategy<PrlDevopsCompu
             try {
                 PrlDevopsApiClient client = prlCloud.buildApiClient();
                 client.deleteVm(agent.getVmId());
-                LOGGER.info("[PrlDevops] Deleted VM " + agent.getVmId()
+                LOGGER.fine("[PrlDevops] Deleted VM " + agent.getVmId()
                         + " after one-shot execution on " + agent.getNodeName());
             } catch (PrlApiException e) {
                 LOGGER.log(Level.WARNING,
@@ -98,7 +98,7 @@ public class PrlDevopsRetentionStrategy extends RetentionStrategy<PrlDevopsCompu
 
         try {
             jenkins.removeNode(agent);
-            LOGGER.info("[PrlDevops] Removed node " + agent.getNodeName() + " after one-shot execution");
+            LOGGER.fine("[PrlDevops] Removed node " + agent.getNodeName() + " after one-shot execution");
         } catch (IOException e) {
             LOGGER.log(Level.WARNING,
                     "[PrlDevops] Failed to remove node " + agent.getNodeName()

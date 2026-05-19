@@ -27,7 +27,6 @@ class PrlDevopsHttpClientTest {
     private PrlDevopsHttpClient orchClient;
 
     private static final String TOKEN = "test-bearer-token";
-    private static final String HOST_ID = "host-abc-123";
     private static final String VM_ID = "vm-uuid-456";
 
     @BeforeEach
@@ -46,7 +45,6 @@ class PrlDevopsHttpClientTest {
                 .baseUrl(baseUrl)
                 .bearerToken(TOKEN)
                 .mode(ConnectionMode.ORCHESTRATOR)
-                .hostId(HOST_ID)
                 .build();
     }
 
@@ -94,7 +92,7 @@ class PrlDevopsHttpClientTest {
         RecordedRequest req = server.takeRequest();
         assertEquals("PUT", req.getMethod());
         assertEquals(
-                "/api/v1/orchestrator/hosts/" + HOST_ID + "/machines/" + VM_ID + "/clone",
+                "/api/v1/orchestrator/machines/" + VM_ID + "/clone",
                 req.getPath());
     }
 
@@ -132,7 +130,7 @@ class PrlDevopsHttpClientTest {
 
         RecordedRequest req = server.takeRequest();
         assertEquals(
-                "/api/v1/orchestrator/hosts/" + HOST_ID + "/machines/" + VM_ID + "/status",
+                "/api/v1/orchestrator/machines/" + VM_ID + "/status",
                 req.getPath());
     }
 
@@ -161,7 +159,7 @@ class PrlDevopsHttpClientTest {
         RecordedRequest req = server.takeRequest();
         assertEquals("GET", req.getMethod());
         assertEquals(
-                "/api/v1/orchestrator/hosts/" + HOST_ID + "/machines/" + VM_ID + "/start",
+                "/api/v1/orchestrator/machines/" + VM_ID + "/start",
                 req.getPath());
     }
 
@@ -179,7 +177,8 @@ class PrlDevopsHttpClientTest {
                 .setBody(responseBody));
 
         CatalogManifest manifest = new CatalogManifest(
-                "EMPTY-VM", "latest", "host=user:pass@https://catalog.example.com");
+                "EMPTY-VM", "latest", "host=user:pass@https://catalog.example.com",
+                "test-vm", "arm64");
         CreateVmRequest request = new CreateVmRequest("test-vm", "arm64", manifest);
         CreateVmResponse response = hostClient.createVmFromCatalog(request);
 
@@ -191,14 +190,14 @@ class PrlDevopsHttpClientTest {
         assertEquals("/api/v1/machines", req.getPath());
         assertEquals("Bearer " + TOKEN, req.getHeader("Authorization"));
         String body = req.getBody().readUtf8();
-        assertTrue(body.contains("\"startOnCreate\":true"));
+        assertTrue(body.contains("\"start_on_create\":true"));
         assertTrue(body.contains("\"architecture\":\"arm64\""));
         assertTrue(body.contains("\"catalog_id\":\"EMPTY-VM\""));
+        assertTrue(body.contains("\"machine_name\":\"test-vm\""));
     }
 
     @Test
-    void createVmFromCatalog_usesRootPathEvenInOrchestratorMode() throws Exception {
-        // catalog creation always uses /api/v1/machines, not the orchestrator path
+    void createVmFromCatalog_orchestratorMode_usesOrchestratorPath() throws Exception {
         String responseBody = "{\"id\":\"" + VM_ID + "\",\"name\":\"test-vm\","
                 + "\"owner\":\"user\",\"current_state\":\"stopped\"}";
         server.enqueue(new MockResponse()
@@ -207,13 +206,14 @@ class PrlDevopsHttpClientTest {
                 .setBody(responseBody));
 
         CatalogManifest manifest = new CatalogManifest(
-                "EMPTY-VM", "latest", "host=user:pass@https://catalog.example.com");
+                "EMPTY-VM", "latest", "host=user:pass@https://catalog.example.com",
+                "test-vm", "arm64");
         CreateVmRequest request = new CreateVmRequest("test-vm", "arm64", manifest);
         orchClient.createVmFromCatalog(request);
 
         RecordedRequest req = server.takeRequest();
         assertEquals("POST", req.getMethod());
-        assertEquals("/api/v1/machines", req.getPath());
+        assertEquals("/api/v1/orchestrator/machines", req.getPath());
     }
 
     // -------------------------------------------------------------------------
@@ -241,7 +241,7 @@ class PrlDevopsHttpClientTest {
         RecordedRequest req = server.takeRequest();
         assertEquals("DELETE", req.getMethod());
         assertEquals(
-                "/api/v1/orchestrator/hosts/" + HOST_ID + "/machines/" + VM_ID + "?force=true",
+                "/api/v1/orchestrator/machines/" + VM_ID + "?force=true",
                 req.getPath());
     }
 
@@ -464,16 +464,6 @@ class PrlDevopsHttpClientTest {
         assertThrows(IllegalStateException.class, () ->
                 new PrlDevopsHttpClient.Builder()
                         .baseUrl("http://localhost:8080")
-                        .build());
-    }
-
-    @Test
-    void builder_orchestratorModeWithoutHostId_throwsIllegalState() {
-        assertThrows(IllegalStateException.class, () ->
-                new PrlDevopsHttpClient.Builder()
-                        .baseUrl("http://localhost:8080")
-                        .bearerToken(TOKEN)
-                        .mode(ConnectionMode.ORCHESTRATOR)
                         .build());
     }
 }

@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * <pre>
  * {
  *   "name":            "jenkins-clone-1234",
- *   "startOnCreate":   true,
+ *   "start_on_create": true,
  *   "architecture":    "arm64",
  *   "catalog_manifest": { ... }
  * }
@@ -19,7 +19,7 @@ public class CreateVmRequest {
     @JsonProperty("name")
     private final String name;
 
-    @JsonProperty("startOnCreate")
+    @JsonProperty("start_on_create")
     private final boolean startOnCreate;
 
     @JsonProperty("architecture")

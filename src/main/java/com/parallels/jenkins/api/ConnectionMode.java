@@ -7,7 +7,8 @@ package com.parallels.jenkins.api;
  *   <li>{@link #HOST} – speaks directly to a single Parallels Desktop host.
  *       Paths are rooted at {@code /api/v1/machines/...}</li>
  *   <li>{@link #ORCHESTRATOR} – speaks to an orchestrator that federates multiple hosts.
- *       Paths are rooted at {@code /api/v1/orchestrator/hosts/{hostId}/machines/...}</li>
+ *       Paths are rooted at {@code /api/v1/orchestrator/machines/...}; the orchestrator
+ *       routes requests to the appropriate host internally.</li>
  * </ul>
  */
 public enum ConnectionMode {

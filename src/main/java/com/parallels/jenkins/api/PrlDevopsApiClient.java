@@ -31,7 +31,7 @@ public interface PrlDevopsApiClient {
      * Clones the VM identified by {@code sourceVmId}.
      *
      * <p>Maps to {@code PUT /api/v1/machines/{sourceVmId}/clone} (host mode) or
-     * {@code PUT /api/v1/orchestrator/hosts/{hostId}/machines/{sourceVmId}/clone}
+     * {@code PUT /api/v1/orchestrator/machines/{sourceVmId}/clone}
      * (orchestrator mode).
      *
      * @param sourceVmId ID of the VM to clone.
@@ -44,7 +44,8 @@ public interface PrlDevopsApiClient {
     /**
      * Creates a new VM from a Parallels DevOps catalog entry.
      *
-     * <p>Maps to {@code POST /api/v1/machines}.
+     * <p>Maps to {@code POST /api/v1/machines} (host mode) or
+     * {@code POST /api/v1/orchestrator/machines} (orchestrator mode).
      *
      * <p>The request includes {@code startOnCreate: true} so the VM boots
      * immediately after creation. Callers must still poll {@link #waitForVmReady}
@@ -61,7 +62,7 @@ public interface PrlDevopsApiClient {
      * Returns the lightweight status of a VM.
      *
      * <p>Maps to {@code GET /api/v1/machines/{vmId}/status} (host mode) or
-     * {@code GET /api/v1/orchestrator/hosts/{hostId}/machines/{vmId}/status}
+     * {@code GET /api/v1/orchestrator/machines/{vmId}/status}
      * (orchestrator mode).
      *
      * @param vmId ID of the VM to query.
@@ -74,7 +75,7 @@ public interface PrlDevopsApiClient {
      * Starts a VM that is in the {@code stopped} state.
      *
      * <p>Maps to {@code GET /api/v1/machines/{vmId}/start} (host mode) or
-     * {@code GET /api/v1/orchestrator/hosts/{hostId}/machines/{vmId}/start}
+     * {@code GET /api/v1/orchestrator/machines/{vmId}/start}
      * (orchestrator mode).
      *
      * <p>The API accepts the request and begins booting; the VM transitions
@@ -90,7 +91,7 @@ public interface PrlDevopsApiClient {
      * Deletes a VM.
      *
      * <p>Maps to {@code DELETE /api/v1/machines/{vmId}?force=true} (host mode) or
-     * {@code DELETE /api/v1/orchestrator/hosts/{hostId}/machines/{vmId}?force=true}
+     * {@code DELETE /api/v1/orchestrator/machines/{vmId}?force=true}
      * (orchestrator mode). The {@code force=true} parameter allows deletion of a
      * running VM without stopping it first. The API returns {@code 202 Accepted} with no body.
      *
@@ -130,7 +131,7 @@ public interface PrlDevopsApiClient {
      * Executes a command on a running VM.
      *
      * <p>Maps to {@code PUT /api/v1/machines/{vmId}/execute} (host mode) or
-     * {@code PUT /api/v1/orchestrator/hosts/{hostId}/machines/{vmId}/execute}
+     * {@code PUT /api/v1/orchestrator/machines/{vmId}/execute}
      * (orchestrator mode).
      *
      * @param vmId    ID of the VM to run the command on.

@@ -133,11 +133,29 @@ public class PrlDevopsCloud extends Cloud {
     @Override
     public boolean canProvision(CloudState state) {
         AgentTemplate template = getTemplateForLabel(state.getLabel());
-        if (template == null) return false;
-        if (Util.fixEmptyAndTrim(serviceUrl) == null) return false;
-        if (Util.fixEmptyAndTrim(credentialsId) == null) return false;
-        if (Util.fixEmptyAndTrim(template.getSshCredentialsId()) == null) return false;
-        if (!template.canProvision()) return false;
+        if (template == null) {
+            LOGGER.warning("[PrlDevops] canProvision: no template matches label '"
+                    + state.getLabel() + "'. Check the template label in cloud configuration.");
+            return false;
+        }
+        if (Util.fixEmptyAndTrim(serviceUrl) == null) {
+            LOGGER.warning("[PrlDevops] canProvision: Service URL is not configured on cloud '" + name + "'.");
+            return false;
+        }
+        if (Util.fixEmptyAndTrim(credentialsId) == null) {
+            LOGGER.warning("[PrlDevops] canProvision: credentials are not configured on cloud '" + name + "'.");
+            return false;
+        }
+        if (Util.fixEmptyAndTrim(template.getSshCredentialsId()) == null) {
+            LOGGER.warning("[PrlDevops] canProvision: template '" + template.getTemplateLabel()
+                    + "' has no SSH credentials configured.");
+            return false;
+        }
+        if (!template.canProvision()) {
+            LOGGER.warning("[PrlDevops] canProvision: template '" + template.getTemplateLabel()
+                    + "' has no provisioning config (catalog ID / base VM name missing).");
+            return false;
+        }
         // Prevent Jenkins from even scheduling a provisioning cycle when already at cap.
         return maxAgents <= 0 || countActiveAgents() < maxAgents;
     }
