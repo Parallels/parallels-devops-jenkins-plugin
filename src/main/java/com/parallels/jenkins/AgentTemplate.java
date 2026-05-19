@@ -25,9 +25,10 @@ import java.util.Collections;
 
 /**
  * Per-VM-type configuration. One {@code AgentTemplate} maps to one VM type in
- * Parallels DevOps Service. The provisioning strategy (clone vs. catalog) is
- * expressed as a {@link ProvisioningConfig} Describable, rendered via
- * {@code <f:dropdownDescriptorSelector>} with no inline JavaScript.
+ * Parallels DevOps Service. The available provisioning strategies are rendered via
+ * {@code <f:dropdownDescriptorSelector>}; incompatible combinations (e.g. Clone
+ * in Orchestrator mode) are rejected at save time by
+ * {@link PrlDevopsCloud.DescriptorImpl#newInstance}.
  */
 public class AgentTemplate extends AbstractDescribableImpl<AgentTemplate> implements Serializable {
 

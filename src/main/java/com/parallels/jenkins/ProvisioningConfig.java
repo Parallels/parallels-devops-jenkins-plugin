@@ -13,15 +13,16 @@ import java.util.concurrent.ExecutorService;
  * Abstract base for the two provisioning strategies supported by the plugin.
  *
  * <ul>
- *   <li>{@link CloneProvisioningConfig} — clone an existing VM by name (host mode).</li>
- *   <li>{@link CatalogProvisioningConfig} — create a VM from a Parallels DevOps catalog
- *       entry (orchestrator mode).</li>
+ *   <li>{@link CloneProvisioningConfig} — clone an existing VM by name. Available in HOST mode.</li>
+ *   <li>{@link CatalogProvisioningConfig} — create a VM from a Parallels DevOps catalog entry.
+ *       Available in both HOST and ORCHESTRATOR modes.</li>
  * </ul>
  *
  * <p>Implementations are rendered in the UI via
  * {@code <f:dropdownDescriptorSelector>} in the {@code AgentTemplate} config
  * jelly, which automatically shows each implementation's own jelly form without
- * any inline JavaScript.
+ * any inline JavaScript. Incompatible combinations (e.g. Clone in Orchestrator
+ * mode) are rejected at save time by {@link PrlDevopsCloud}.
  */
 public abstract class ProvisioningConfig
         extends AbstractDescribableImpl<ProvisioningConfig>

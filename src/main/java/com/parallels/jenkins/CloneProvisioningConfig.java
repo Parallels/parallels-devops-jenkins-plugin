@@ -74,6 +74,6 @@ public final class CloneProvisioningConfig extends ProvisioningConfig {
     @Symbol("clone")
     public static class DescriptorImpl extends Descriptor<ProvisioningConfig> {
         @Override
-        public String getDisplayName() { return "Clone existing VM (Host mode)"; }
+        public String getDisplayName() { return "Clone existing VM"; }
     }
 }

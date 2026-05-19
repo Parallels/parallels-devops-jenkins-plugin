@@ -137,7 +137,7 @@ public final class CatalogProvisioningConfig extends ProvisioningConfig {
     public static class DescriptorImpl extends Descriptor<ProvisioningConfig> {
 
         @Override
-        public String getDisplayName() { return "Create from catalog (Orchestrator mode)"; }
+        public String getDisplayName() { return "Create from catalog"; }
 
         @Override
         public ProvisioningConfig newInstance(StaplerRequest2 req, JSONObject formData) throws FormException {
